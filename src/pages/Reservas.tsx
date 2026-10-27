@@ -22,7 +22,8 @@ export default function Reservas() {
     inicio: periodo.inicio.toISOString(),
     fim: periodo.fim.toISOString(),
     minhas,
-    ...(admin ? { salaId: salaId || undefined, status: status.length ? status : undefined } : {}),
+    salaId: salaId || undefined,
+    status: status.length ? status : undefined,
   });
 
   function alternarStatus(st: StatusFiltro) {
@@ -38,14 +39,15 @@ export default function Reservas() {
         <h1 className="text-xl font-semibold">{admin && todas ? 'Reservas' : 'Minhas reservas'}</h1>
         <SeletorPeriodo valor={periodo} aoMudar={setPeriodo} />
       </div>
-      {admin && (
-        <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
+        {admin && (
           <div className="flex gap-1">
             <button type="button" aria-pressed={todas} onClick={() => setTodas(true)}
               className={classeModo(todas)}>Todas as reservas</button>
             <button type="button" aria-pressed={!todas} onClick={() => setTodas(false)}
               className={classeModo(!todas)}>Minhas</button>
           </div>
+        )}
           <label className="text-sm">
             <span className="sr-only">Filtrar por sala</span>
             <select value={salaId} onChange={(e) => setSalaId(e.target.value)} className="rounded border px-3 py-2">
@@ -62,8 +64,7 @@ export default function Reservas() {
               </label>
             ))}
           </fieldset>
-        </div>
-      )}
+      </div>
       {isLoading && <p>Carregando...</p>}
       {error && <p role="alert" className="text-red-600">{error.message}</p>}
       {data && <ListaReservas reservas={data} vazio="Nenhuma reserva neste período." />}

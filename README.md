@@ -47,7 +47,7 @@ docs/          roteiro de testes, primeiro admin, especificação
 |---|---|
 | Regras de negócio (horário 07–23h, seg–sáb, duração mínima, transições de status, e-mails, inativações) | `server/services/` |
 | **Nunca duas reservas ativas sobrepostas na mesma sala** | Constraint de exclusão `reservas_sem_conflito` em `supabase/migrations/20261027000000_esquema_inicial.sql` (o banco recusa; a API devolve 409) |
-| Aprovar/recusar/cancelar sem corrida | `UPDATE` condicional (só muda se o status ainda permite) em `server/services/reservas.ts` |
+| Aprovar/recusar/cancelar sem corrida | `UPDATE` condicional (só muda se o status ainda permite) em `server/repositories/reservas.ts` (`transicionar`); o service apenas orquestra |
 | Transações | `server/lib/db.ts` |
 | Permissões por papel | `server/middlewares/autenticar.ts` e `exigirAdmin.ts` |
 | Constantes e validação compartilhadas | `shared/` |
@@ -96,6 +96,8 @@ O cadastro público fica desligado no Supabase; o primeiro admin é criado manua
 | `APP_URL` | URL do site, usada nos links dos e-mails |
 
 `public/_redirects` mantém `/api/*` antes do fallback da SPA. Notas: o Supabase gratuito pausa após 7 dias sem uso (acesse antes da apresentação); o Gmail exige verificação em duas etapas para gerar a senha de app.
+
+**Região (afeta o RNF001):** o projeto Supabase está em `sa-east-1` (São Paulo). Se o Netlify permitir escolher a região das Functions, escolha a mais próxima (por exemplo São Paulo ou us-east); a distância entre a Function e o banco impacta diretamente o tempo de resposta.
 
 ## Rastreabilidade dos requisitos
 

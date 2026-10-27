@@ -41,13 +41,22 @@ describe('Reservas', () => {
     await waitFor(() => expect(ultima().minhas).toBe('true'));
   });
 
-  it('professor só vê as próprias e sem filtro de status', async () => {
+  it('professor vê filtros de sala e status, sempre com minhas=true', async () => {
     papel.valor = 'usuario';
+    apiMock.mockImplementation(async (c: string) => (c === '/salas' ? [{ id: 's1', nome: 'Sala A', tipo: 'reuniao', ativa: true }] : []));
+    const user = userEvent.setup();
     montar();
     await waitFor(() => expect(ultima()).toBeDefined());
     expect(ultima().minhas).toBe('true');
-    expect(ultima().status).toBeUndefined();
+    expect(ultima().status).toBe('pendente,expirada,aprovada,recusada,cancelada');
     expect(screen.queryByRole('button', { name: 'Todas as reservas' })).toBeNull();
-    expect(screen.queryByRole('checkbox', { name: 'Recusada' })).toBeNull();
+    await user.click(screen.getByRole('checkbox', { name: 'Recusada' }));
+    await screen.findByRole('option', { name: 'Sala A' });
+    await user.selectOptions(screen.getByRole('combobox'), 's1');
+    await waitFor(() => {
+      expect(ultima().minhas).toBe('true');
+      expect(ultima().status).toBe('pendente,expirada,aprovada,cancelada');
+      expect(ultima().salaId).toBe('s1');
+    });
   });
 });

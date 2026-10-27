@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import type { Perfil } from '../../shared/tipos';
 import { api, ErroApi } from '../lib/api';
 import { supabase } from '../lib/supabase';
@@ -24,6 +25,7 @@ function recusado(e: unknown): boolean {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient();
   const [perfil, setPerfil] = useState<Perfil | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [erroCarga, setErroCarga] = useState<string | null>(null);
@@ -51,13 +53,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let ativo = true;
     void carregarPerfil(() => ativo);
     const { data: sub } = supabase.auth.onAuthStateChange((evento) => {
-      if (evento === 'SIGNED_OUT') setPerfil(null);
+      if (evento === 'SIGNED_OUT') {
+        setPerfil(null);
+        queryClient.clear();
+      }
     });
     return () => {
       ativo = false;
       sub.subscription.unsubscribe();
     };
-  }, [carregarPerfil]);
+  }, [carregarPerfil, queryClient]);
 
   const recarregar = useCallback(async () => {
     setCarregando(true);
@@ -83,17 +88,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const sair = useCallback(async () => {
-    await supabase.auth.signOut();
-    setPerfil(null);
-  }, []);
+    try {
+      await supabase.auth.signOut();
+    } finally {
+      setPerfil(null);
+      queryClient.clear();
+    }
+  }, [queryClient]);
 
   const expirarSessao = useCallback(async () => {
     try {
       await supabase.auth.signOut({ scope: 'local' });
     } finally {
       setPerfil(null);
+      queryClient.clear();
     }
-  }, []);
+  }, [queryClient]);
 
   const valor = useMemo(
     () => ({ perfil, carregando, erroCarga, entrar, sair, expirarSessao, recarregar }),

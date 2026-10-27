@@ -15,8 +15,8 @@ vi.mock('../lib/api', async () => {
 
 const reserva: ReservaDTO = {
   id: 'r1', salaId: 's1', salaNome: 'Sala A', salaTipo: 'reuniao', usuarioId: 'u1',
-  solicitanteNome: 'Ana', inicio: new Date(2026, 10, 3, 9, 0).toISOString(),
-  fim: new Date(2026, 10, 3, 10, 0).toISOString(), status: 'pendente', finalidade: 'Reunião',
+  solicitanteNome: 'Ana', inicio: new Date(2099, 10, 3, 9, 0).toISOString(),
+  fim: new Date(2099, 10, 3, 10, 0).toISOString(), status: 'pendente', finalidade: 'Reunião',
   motivoRecusa: null, expirada: false,
 };
 const dono = { id: 'u1', nome: 'Ana', email: 'a@x', papel: 'usuario', ativo: true } as Perfil;
@@ -90,5 +90,31 @@ describe('ModalDetalhes', () => {
     apiMock.mockResolvedValue([]);
     montar(reserva, admin);
     await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/reservas/r1/historico'));
+  });
+
+  it('cancelar pede confirmação e só chama a API se confirmada', async () => {
+    apiMock.mockResolvedValue([]);
+    const user = userEvent.setup();
+    const confirmar = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    montar(reserva, dono);
+    await user.click(screen.getByRole('button', { name: 'Cancelar reserva' }));
+    expect(confirmar).toHaveBeenCalledWith('Cancelar esta reserva? O solicitante será avisado por e-mail.');
+    expect(apiMock.mock.calls.filter((c) => c[1]?.metodo)).toHaveLength(0);
+    confirmar.mockReturnValue(true);
+    await user.click(screen.getByRole('button', { name: 'Cancelar reserva' }));
+    await waitFor(() => expect(apiMock.mock.calls.filter((c) => c[1]?.metodo)).toHaveLength(1));
+    confirmar.mockRestore();
+  });
+
+  it('reserva que já começou não tem ações', () => {
+    const passada = { ...reserva, inicio: new Date(Date.now() - 3600_000).toISOString(),
+      fim: new Date(Date.now() + 3600_000).toISOString() };
+    montar({ ...passada, status: 'aprovada' }, dono);
+    expect(screen.queryByRole('button', { name: 'Cancelar reserva' })).toBeNull();
+    cleanup();
+    montar({ ...passada, status: 'pendente' }, admin);
+    expect(screen.queryByRole('button', { name: 'Aprovar' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Recusar' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Cancelar reserva' })).toBeNull();
   });
 });

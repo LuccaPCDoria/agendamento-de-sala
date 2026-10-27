@@ -25,9 +25,10 @@ export default function ModalDetalhes({ reserva, perfil, aoFechar }: Props) {
   const [erroMotivo, setErroMotivo] = useState<string | null>(null);
 
   const admin = perfil.papel === 'admin';
-  const ativa = (reserva.status === 'pendente' || reserva.status === 'aprovada') && !reserva.expirada;
+  const ativa = (reserva.status === 'pendente' || reserva.status === 'aprovada') && !reserva.expirada
+    && new Date(reserva.inicio).getTime() > Date.now();
   const podeCancelar = ativa && (admin || reserva.usuarioId === perfil.id);
-  const podeDecidir = admin && reserva.status === 'pendente' && !reserva.expirada;
+  const podeDecidir = admin && reserva.status === 'pendente' && ativa;
   const ocupado = aprovar.isPending || recusar.isPending || cancelar.isPending;
   const erro = aprovar.error?.message ?? recusar.error?.message ?? cancelar.error?.message ?? null;
   const verHistorico = admin || reserva.usuarioId === perfil.id;
@@ -36,6 +37,11 @@ export default function ModalDetalhes({ reserva, perfil, aoFechar }: Props) {
 
   async function executar(p: Promise<unknown>) {
     try { await p; aoFechar(); } catch { /* erro exibido no modal */ }
+  }
+
+  function confirmarCancelamento() {
+    if (!window.confirm('Cancelar esta reserva? O solicitante será avisado por e-mail.')) return;
+    void executar(cancelar.mutateAsync(reserva.id));
   }
 
   function confirmarRecusa() {
@@ -101,7 +107,7 @@ export default function ModalDetalhes({ reserva, perfil, aoFechar }: Props) {
         )}
         {podeCancelar && (
           <button type="button" disabled={ocupado}
-            onClick={() => void executar(cancelar.mutateAsync(reserva.id))}
+            onClick={confirmarCancelamento}
             className="rounded border px-3 py-2 text-sm disabled:opacity-50">Cancelar reserva</button>
         )}
       </div>

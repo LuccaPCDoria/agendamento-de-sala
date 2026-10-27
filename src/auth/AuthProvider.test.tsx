@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { act, cleanup, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { getSession, signOut, signInWithPassword, onAuthStateChange, api } = vi.hoisted(() => ({
@@ -21,8 +22,10 @@ vi.mock('../lib/api', async () => {
 import { ErroApi } from '../lib/api';
 import { AuthProvider, useAuth } from './AuthProvider';
 
+let sairRef: () => Promise<void> = async () => {};
 function Sonda() {
-  const { carregando, erroCarga, perfil } = useAuth();
+  const { carregando, erroCarga, perfil, sair } = useAuth();
+  sairRef = sair;
   return <div>{carregando ? 'carregando' : erroCarga ? `erro:${erroCarga}` : perfil ? 'logado' : 'anonimo'}</div>;
 }
 
@@ -35,7 +38,11 @@ beforeEach(() => {
   onAuthStateChange.mockReturnValue({ data: { subscription: { unsubscribe: vi.fn() } } });
 });
 
-const montar = () => render(<AuthProvider><Sonda /></AuthProvider>);
+let qc: QueryClient;
+const montar = () => {
+  qc = new QueryClient();
+  return render(<QueryClientProvider client={qc}><AuthProvider><Sonda /></AuthProvider></QueryClientProvider>);
+};
 
 describe('AuthProvider ao restaurar a sessão', () => {
   it('encerra a sessão local quando /me responde 403', async () => {
@@ -63,5 +70,38 @@ describe('AuthProvider ao restaurar a sessão', () => {
     getSession.mockRejectedValue(new TypeError('x'));
     montar();
     await screen.findByText(/^erro:/);
+  });
+});
+
+describe('AuthProvider ao sair', () => {
+  it('limpa o cache de consultas ao sair', async () => {
+    api.mockResolvedValue({ id: 'u1' });
+    montar();
+    await screen.findByText('logado');
+    qc.setQueryData(['reservas', 'minhas'], [{ id: 'r1' }]);
+    await act(async () => { await sairRef(); });
+    expect(qc.getQueryData(['reservas', 'minhas'])).toBeUndefined();
+    await screen.findByText('anonimo');
+  });
+
+  it('limpa perfil e cache mesmo se o signOut falhar', async () => {
+    api.mockResolvedValue({ id: 'u1' });
+    montar();
+    await screen.findByText('logado');
+    qc.setQueryData(['x'], 1);
+    signOut.mockRejectedValue(new TypeError('Failed to fetch'));
+    await act(async () => { await sairRef().catch(() => {}); });
+    expect(qc.getQueryData(['x'])).toBeUndefined();
+    await screen.findByText('anonimo');
+  });
+
+  it('limpa o cache no evento SIGNED_OUT', async () => {
+    api.mockResolvedValue({ id: 'u1' });
+    montar();
+    await screen.findByText('logado');
+    qc.setQueryData(['x'], 1);
+    const cb = onAuthStateChange.mock.calls[0][0];
+    await act(async () => { cb('SIGNED_OUT'); });
+    expect(qc.getQueryData(['x'])).toBeUndefined();
   });
 });
