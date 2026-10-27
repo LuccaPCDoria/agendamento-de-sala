@@ -62,4 +62,11 @@ describe('API de salas', () => {
     const nao = await request(app()).patch('/api/salas/11111111-1111-4111-8111-111111111111').set(auth(token)).send({ capacidade: 5 });
     expect(nao.status).toBe(404);
   });
+  it('requisições concorrentes no mesmo cliente (max: 1) não ficam presas no pooler', async () => {
+    const { token } = await criarUsuarioTeste('admin');
+    const a = app();
+    const caminhos = ['/api/me', '/api/salas', '/api/salas?incluirInativas=true', '/api/salas'];
+    const respostas = await Promise.all(caminhos.map((c) => request(a).get(c).set(auth(token)).timeout(10_000)));
+    expect(respostas.map((r) => r.status)).toEqual([200, 200, 200, 200]);
+  }, 20_000);
 });
