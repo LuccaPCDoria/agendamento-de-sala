@@ -195,14 +195,14 @@ Cada transição segue esta ordem, dentro de uma transação:
 - **Pendente expirada:** uma reserva `pendente` cujo início já passou não muda de status no banco, mas é exibida como **"Expirada"** (cinza no calendário, rótulo na lista e no PDF) e não aparece na tela de Aprovações. Comportamento aceito e documentado: ela continua ocupando o restante do seu intervalo na constraint, o que só afeta horários já em andamento.
 
 ### E-mails (RF12)
-- O solicitante recebe e-mail em **toda** mudança de status: criação ("Solicitação recebida" ou "Reserva confirmada" quando criada por admin), aprovação, recusa (com motivo) e cancelamento (por ele próprio, pela direção ou automático por inativação).
+- O solicitante recebe e-mail em **toda** mudança de status: criação por admin ("Reserva confirmada"), aprovação, recusa (com motivo) e cancelamento (por ele próprio, pela direção ou automático por inativação).
 - Ordem: **commit → envio dos e-mails com `await` → resposta HTTP.** A função serverless congela após responder, então nada é enviado depois da resposta.
 - **Prazo global de 5 s** para todo o envio (`Promise.race` contra um timer), além dos timeouts de conexão do Nodemailer. O transporter (`pool: true`, `maxConnections: 2`) é criado **a cada requisição** que envia e-mail e fechado com `transporter.close()` ao final — não é reaproveitado entre invocações, porque o Gmail derruba conexões ociosas enquanto a função está congelada.
 - **Agrupamento:** na inativação de sala ou usuário, cada solicitante recebe **um único e-mail** listando todas as suas reservas canceladas.
 - Falha ou estouro de prazo no envio é registrado em log e **não** desfaz a operação nem gera erro para o usuário.
 - O remetente é o próprio `GMAIL_USER`. O e-mail inclui sala, data, horário, novo status e o link `APP_URL`. Textos livres (`finalidade`, `motivo_recusa`, nomes) são **escapados** no template HTML.
 - Destinatário: sempre `perfis.email` (fonte da verdade para notificações).
-- **RNF001:** o tempo de criação de reserva é medido com o e-mail incluído (§10). Se passar de 2 s, o e-mail de criação ("Solicitação recebida") é removido; os demais permanecem.
+- **RNF001:** o tempo de criação de reserva é medido com o e-mail incluído (§10). O e-mail "Solicitação recebida" foi removido após a medição em produção passar de 2 s; os demais permanecem.
 
 ### Salas
 - Nome único (sem diferenciar maiúsculas); duplicidade (`23505`) → 409 "Já existe uma sala com este nome."

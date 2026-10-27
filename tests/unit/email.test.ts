@@ -11,7 +11,7 @@ const r = {
   status: 'pendente', finalidade: 'Aula', motivoRecusa: null,
   criadoEm: new Date(), atualizadoEm: new Date(),
 } as unknown as ReservaDetalhada;
-const evento: EventoEmail = { para: 'ana@x.com', nome: 'Ana', tipo: 'criada', reservas: [r] };
+const evento: EventoEmail = { para: 'ana@x.com', nome: 'Ana', tipo: 'confirmada', reservas: [r] };
 const eventoComInicio = (iso: string): EventoEmail => ({ ...evento, reservas: [{ ...r, inicio: new Date(iso) }] });
 
 describe('montarEmail', () => {
@@ -40,7 +40,7 @@ describe('montarEmail', () => {
   });
   it('assunto por tipo', () => {
     const esperado: Record<TipoEmail, string> = {
-      criada: 'Solicitação de reserva recebida', confirmada: 'Reserva confirmada',
+      confirmada: 'Reserva confirmada',
       aprovada: 'Reserva aprovada', recusada: 'Reserva recusada', cancelada: 'Reserva cancelada',
     };
     for (const [tipo, assunto] of Object.entries(esperado))
@@ -59,7 +59,7 @@ describe('criarNotificador', () => {
   it('um sendMail por evento e fecha o transporte', async () => {
     await criar()([evento, { ...evento, para: 'b@x.com' }]);
     expect(send).toHaveBeenCalledTimes(2);
-    expect(send.mock.calls[0][0]).toMatchObject({ from: 'g@x.com', to: 'ana@x.com', subject: 'Solicitação de reserva recebida' });
+    expect(send.mock.calls[0][0]).toMatchObject({ from: 'g@x.com', to: 'ana@x.com', subject: 'Reserva confirmada' });
     expect(close).toHaveBeenCalledOnce();
   });
   it('eventos vazios não criam transporte', async () => {

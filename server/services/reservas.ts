@@ -66,7 +66,8 @@ export function criarServicoReservas(deps: DependenciasApp) {
         const [det] = await r.reservas.buscarDetalhadas([reserva.id]);
         return det;
       });
-      await deps.notificar(agruparPorSolicitante([detalhada], status === 'aprovada' ? 'confirmada' : 'criada'));
+      // RNF001: sem e-mail de "Solicitação recebida" (professor/pendente); só a confirmação do admin.
+      if (status === 'aprovada') await deps.notificar(agruparPorSolicitante([detalhada], 'confirmada'));
       return paraReservaDTO(detalhada, agora);
     },
     async listar(usuario: Perfil, f: FiltroReservas): Promise<ReservaDTO[]> {

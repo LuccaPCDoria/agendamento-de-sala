@@ -1,6 +1,6 @@
 import type { ReservaDetalhada } from '../tipos';
 
-export type TipoEmail = 'criada' | 'confirmada' | 'aprovada' | 'recusada' | 'cancelada';
+export type TipoEmail = 'confirmada' | 'aprovada' | 'recusada' | 'cancelada';
 
 export interface EventoEmail {
   para: string;

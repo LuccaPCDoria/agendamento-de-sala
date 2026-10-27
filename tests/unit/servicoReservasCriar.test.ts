@@ -56,10 +56,10 @@ describe('servicoReservas.criar', () => {
     vi.mocked(repos.perfis.buscarAtivoParaReserva).mockResolvedValue(null);
     await expect(criarServicoReservas(deps).criar(perfil('usuario'), dados)).rejects.toMatchObject({ status: 403 });
   });
-  it('notifica "criada" para professor e "confirmada" para admin', async () => {
+  it('não notifica na criação por professor (RNF001) e notifica "confirmada" para admin', async () => {
     const a = montar();
     await criarServicoReservas(a.deps).criar(perfil('usuario'), dados);
-    expect(a.deps.notificar).toHaveBeenCalledWith([expect.objectContaining({ tipo: 'criada', para: 'u@x.com' })]);
+    expect(a.deps.notificar).not.toHaveBeenCalled();
     const b = montar();
     await criarServicoReservas(b.deps).criar(perfil('admin'), dados);
     expect(b.deps.notificar).toHaveBeenCalledWith([expect.objectContaining({ tipo: 'confirmada' })]);
@@ -79,12 +79,12 @@ describe('servicoReservas.criar', () => {
     // os repos usados são os de `base` (passados a fn): reconfigura-os
     const r = base.repos;
     vi.mocked(r.salas.buscarAtivaParaReserva).mockResolvedValue({ id: SALA, nome: 'S', tipo: 'reuniao', capacidade: 1, recursos: [], ativa: true });
-    vi.mocked(r.perfis.buscarAtivoParaReserva).mockResolvedValue(perfil('usuario'));
+    vi.mocked(r.perfis.buscarAtivoParaReserva).mockResolvedValue(perfil('admin'));
     vi.mocked(r.reservas.inserir).mockResolvedValue({ id: 'r1' } as never);
     vi.mocked(r.reservas.buscarDetalhadas).mockResolvedValue([
-      { id: 'r1', usuarioId: 'u1', inicio: new Date(dados.inicio), fim: new Date(dados.fim), status: 'pendente', solicitanteEmail: 'u@x.com', solicitanteNome: 'U' } as ReservaDetalhada,
+      { id: 'r1', usuarioId: 'u1', inicio: new Date(dados.inicio), fim: new Date(dados.fim), status: 'aprovada', solicitanteEmail: 'u@x.com', solicitanteNome: 'U' } as ReservaDetalhada,
     ]);
-    await criarServicoReservas(deps).criar(perfil('usuario'), dados);
+    await criarServicoReservas(deps).criar(perfil('admin'), dados);
     expect(ordem).toEqual(['commit', 'notificar']);
   });
 });

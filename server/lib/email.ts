@@ -4,7 +4,6 @@ import { FUSO } from '../../shared/constantes';
 import type { EventoEmail, Notificador, TipoEmail } from './notificador';
 
 const ASSUNTOS: Record<TipoEmail, string> = {
-  criada: 'Solicitação de reserva recebida',
   confirmada: 'Reserva confirmada',
   aprovada: 'Reserva aprovada',
   recusada: 'Reserva recusada',

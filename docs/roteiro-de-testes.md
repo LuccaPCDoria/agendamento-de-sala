@@ -21,7 +21,7 @@ A regra `/api/*` precisa vir **antes** do fallback da SPA em `public/_redirects`
 | 2.3 Admin cria uma sala (tela Salas) | Sala aparece na listagem | | |
 | 2.4 Admin cria um professor (tela Usuários) com senha inicial | Professor aparece na listagem | | |
 | 2.5 Sair e entrar como professor | Menu sem telas de admin; acessar `/salas` mostra "Acesso negado" | | |
-| 2.6 Professor reserva a sala (filtro de sala ativo, arrastar no horário livre, finalidade, confirmar) | Reserva aparece **amarela** (pendente); e-mail "Solicitação recebida" chega | | |
+| 2.6 Professor reserva a sala (filtro de sala ativo, arrastar no horário livre, finalidade, confirmar) | Reserva aparece **amarela** (pendente); nenhum e-mail é enviado na criação (RNF001) | | |
 | 2.7 Professor tenta reservar horário sobreposto | Modal fica aberto com mensagem de conflito (409) | | |
 | 2.8 Admin aprova a reserva (Aprovações) | Reserva fica **verde**; professor recebe e-mail de aprovação | | |
 | 2.9 Professor cria outra reserva; admin **recusa** informando motivo | Motivo é obrigatório; professor recebe e-mail com o motivo; reserva some do calendário e aparece em Histórico como recusada | | |
@@ -55,8 +55,8 @@ A regra `/api/*` precisa vir **antes** do fallback da SPA em `public/_redirects`
 | 5 | | |
 | **Mediana** | | |
 
-**Regra (spec §6):** se a mediana **quente** passar de 2 s, remover o e-mail do tipo `criada` ("Solicitação recebida"), mantendo `confirmada` e os demais, e registrar a decisão abaixo.
+**Regra (spec §6):** a medição em produção passou de 2 s; o e-mail "Solicitação recebida" foi removido (mantidos `confirmada` e os demais). Registrar a decisão abaixo.
 
-**Decisão registrada:** _(ex.: "Mediana quente = 1,3 s, e-mail mantido" ou "Mediana quente = 2,6 s, e-mail `criada` removido em <data>")_
+**Decisão registrada:** _(e-mail de criação removido em 2026-10-27; mediana quente > 2 s)_
 
 Data das medições: ____ / Responsável: ____
