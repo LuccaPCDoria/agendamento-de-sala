@@ -31,6 +31,8 @@ export interface RepoReservas {
     usuarioId?: string;
     agora: Date;
   }): Promise<ReservaDetalhada[]>;
+  /** Reservas com início em [inicio, fim), todos os status, por início. */
+  listarPeriodo(inicio: Date, fim: Date): Promise<ReservaDetalhada[]>;
   listarPendentesFuturas(agora: Date): Promise<ReservaDetalhada[]>;
   /** Trava (for update) e cancela as reservas futuras pendentes/aprovadas da sala; devolve o status anterior. */
   cancelarFuturasDaSala(salaId: string): Promise<{ id: string; anterior: StatusReserva }[]>;
@@ -112,6 +114,12 @@ export function criarRepoReservas(db: Executor): RepoReservas {
           ${f.salaId ? db`and r.sala_id = ${f.salaId}` : db``}
           ${f.tipo ? db`and s.tipo = ${f.tipo}` : db``}
           ${f.usuarioId ? db`and r.usuario_id = ${f.usuarioId}` : db``}
+        order by r.inicio`;
+    },
+    async listarPeriodo(inicio, fim) {
+      return db<ReservaDetalhada[]>`
+        ${selecionar()}
+        where r.inicio >= ${inicio} and r.inicio < ${fim}
         order by r.inicio`;
     },
     async listarPendentesFuturas(agora) {
