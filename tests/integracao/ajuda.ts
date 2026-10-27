@@ -104,8 +104,16 @@ export async function criarUsuarioTeste(papel: Papel): Promise<{ perfil: Perfil;
   return { perfil, token: sessao.session.access_token };
 }
 
+let sqlDeps: postgres.Sql | undefined;
+
+export async function encerrarConexoes(): Promise<void> {
+  await sqlTeste.end();
+  if (sqlDeps) await sqlDeps.end();
+  sqlDeps = undefined;
+}
+
 export function depsIntegracao(): DependenciasApp {
-  const sql = criarSql(env('TEST_DATABASE_URL'));
+  const sql = (sqlDeps ??= criarSql(env('TEST_DATABASE_URL')));
   const { authAdmin, verificarToken } = criarAuthAdmin(
     env('TEST_SUPABASE_URL'),
     env('TEST_SUPABASE_SERVICE_ROLE_KEY'),

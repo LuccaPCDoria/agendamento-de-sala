@@ -8,9 +8,9 @@ interface ErroAuth {
   message?: string;
 }
 
-function lancar(error: ErroAuth | null): void {
+function lancar(error: ErroAuth | null, mapearEmail = false): void {
   if (!error) return;
-  if (error.code === 'email_exists' || error.status === 422) {
+  if (mapearEmail && (error.code === 'email_exists' || (error.status === 422 && !error.code))) {
     throw conflito('Já existe um usuário com este e-mail.');
   }
   throw error;
@@ -28,7 +28,7 @@ export function criarAuthAdmin(
   const authAdmin: AuthAdmin = {
     async criarUsuario(email, senha) {
       const { data, error } = await admin.createUser({ email, password: senha, email_confirm: true });
-      lancar(error);
+      lancar(error, true);
       if (!data.user) throw new Error('Falha ao criar usuário no Auth');
       return data.user.id;
     },
@@ -38,7 +38,7 @@ export function criarAuthAdmin(
         ...(dados.senha !== undefined ? { password: dados.senha } : {}),
         email_confirm: true,
       });
-      lancar(error);
+      lancar(error, true);
     },
     async excluirUsuario(id) {
       const { error } = await admin.deleteUser(id);
@@ -52,7 +52,12 @@ export function criarAuthAdmin(
 
   const verificarToken: DependenciasApp['verificarToken'] = async (token) => {
     const { data, error } = await cliente.auth.getUser(token);
-    if (error || !data.user || !data.user.email) return null;
+    if (error) {
+      // Só rejeição de credencial vira null (401); falha de rede/5xx sobe como 500.
+      if (error.status === 400 || error.status === 401 || error.status === 403) return null;
+      throw error;
+    }
+    if (!data.user || !data.user.email) return null;
     return { id: data.user.id, email: data.user.email };
   };
 

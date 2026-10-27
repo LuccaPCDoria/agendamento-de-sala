@@ -1,12 +1,12 @@
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import request from 'supertest';
 import { criarApp } from '../../server/app';
-import { criarUsuarioTeste, depsIntegracao, limparBanco, sqlTeste } from './ajuda';
+import { criarUsuarioTeste, depsIntegracao, encerrarConexoes, limparBanco } from './ajuda';
 
 beforeEach(limparBanco);
 afterAll(async () => {
   await limparBanco();
-  await sqlTeste.end();
+  await encerrarConexoes();
 });
 
 describe('GET /api/me', () => {
