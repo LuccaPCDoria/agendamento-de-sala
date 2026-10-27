@@ -30,6 +30,23 @@ function janela() {
 }
 
 describe('POST /api/reservas', () => {
+  it('POST concorrente com GETs no mesmo cliente (max: 1): tudo responde e a reserva é gravada', async () => {
+    const { token } = await criarUsuarioTeste('usuario');
+    const sala = await criarSalaTeste();
+    const a = app();
+    const j = janela();
+    const [post, ...gets] = await Promise.all([
+      request(a).post('/api/reservas').set(auth(token)).send({ salaId: sala.id, ...j, finalidade: 'Aula' }).timeout(10_000),
+      request(a).get('/api/me').set(auth(token)).timeout(10_000),
+      request(a).get('/api/salas').set(auth(token)).timeout(10_000),
+      request(a).get('/api/reservas').query({ inicio: j.inicio, fim: j.fim }).set(auth(token)).timeout(10_000),
+    ]);
+    expect(post.status).toBe(201);
+    expect(gets.map((r) => r.status)).toEqual([200, 200, 200]);
+    const [{ n }] = await sqlTeste`select count(*)::int as n from reservas where id = ${post.body.id}`;
+    expect(n).toBe(1);
+  }, 20_000);
+
   it('professor cria reserva pendente (201) e grava histórico', async () => {
     const { token, perfil } = await criarUsuarioTeste('usuario');
     const sala = await criarSalaTeste();
