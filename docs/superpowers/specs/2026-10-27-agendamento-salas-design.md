@@ -83,6 +83,8 @@ agendamento-salas/
 - `lib/db.ts` exporta `transacao(fn)`, que abre `sql.begin` e entrega a `fn` um objeto com os repositórios ligados à transação.
 - Cada repositório é criado a partir de um executor (`sql` ou `tx`): `criarRepositorioReservas(executor)`.
 - Os serviços recebem suas dependências (repositórios, `transacao`, `enviarEmail`, `supabaseAdmin`) por parâmetro. Nos testes unitários, `transacao` é um fake que apenas chama `fn(reposFalsos)`.
+- **Regra obrigatória:** dentro de `transacao(fn)`, use **somente** os repositórios recebidos em `fn`. Com `max: 1`, qualquer consulta feita pelo `sql` global dentro da transação fica na fila esperando a própria transação e trava a requisição até o limite de 10 s.
+- Os dados necessários aos e-mails (e-mail e nome do solicitante, nome da sala, horários) são lidos **dentro** da transação (JOIN/`RETURNING`) e os e-mails são enviados só depois do commit. Um teste de integração executa os serviços com `max: 1` para detectar violações dessa regra.
 
 ## 5. Banco de dados
 
@@ -187,7 +189,7 @@ Cada transição segue esta ordem, dentro de uma transação:
 | Ação | Quem | Status permitidos | Condições extras | Resultado |
 |---|---|---|---|---|
 | Aprovar | admin | `pendente` | início no futuro; sala ativa | `aprovada` |
-| Recusar | admin | `pendente` | `motivo_recusa` obrigatório | `recusada` |
+| Recusar | admin | `pendente` | início no futuro; `motivo_recusa` obrigatório | `recusada` |
 | Cancelar | dono ou admin | `pendente`, `aprovada` | início no futuro | `cancelada` |
 
 - **Pendente expirada:** uma reserva `pendente` cujo início já passou não muda de status no banco, mas é exibida como **"Expirada"** (cinza no calendário, rótulo na lista e no PDF) e não aparece na tela de Aprovações. Comportamento aceito e documentado: ela continua ocupando o restante do seu intervalo na constraint, o que só afeta horários já em andamento.
@@ -204,15 +206,15 @@ Cada transição segue esta ordem, dentro de uma transação:
 
 ### Salas
 - Nome único (sem diferenciar maiúsculas); duplicidade (`23505`) → 409 "Já existe uma sala com este nome."
-- **Inativar sala:** na mesma transação, marca `ativa = false` e cancela automaticamente as reservas futuras `pendente`/`aprovada` dessa sala (histórico com `alterado_por` = admin); depois envia os e-mails aos solicitantes. Reativar não restaura reservas canceladas.
+- **Inativar sala**, nesta ordem, numa transação: `UPDATE salas SET ativa = false` (espera eventuais `FOR SHARE` de criações em andamento) → `UPDATE reservas SET status = 'cancelada' WHERE sala_id = $1 AND status IN ('pendente','aprovada') AND inicio > now() RETURNING ...` → histórico (`alterado_por` = admin) → commit → e-mails. A ordem é obrigatória: invertê-la permitiria criar uma reserva entre os dois comandos. Reativar não restaura reservas canceladas.
 
 ### Usuários
 - E-mails são normalizados com `trim().toLowerCase()` no Zod antes de comparar e gravar.
-- **Regra geral com o Auth:** as chamadas ao Supabase Auth são feitas **dentro** da transação do banco, depois dos comandos SQL e **antes** do commit. Se o Auth falhar → rollback e erro para o admin, que pode repetir (ban/unban são idempotentes). Falha no commit depois de o Auth já ter sido alterado é rara e fica registrada em log.
+- **Regra geral com o Auth** (exceto Criar, que usa compensação — ver abaixo): as chamadas ao Supabase Auth são feitas **dentro** da transação do banco, depois dos comandos SQL e **antes** do commit. Se o Auth falhar → rollback e erro para o admin, que pode repetir (ban/unban são idempotentes). Falha no commit depois de o Auth já ter sido alterado é rara e fica registrada em log.
 - **Criar** (admin): na transação, `INSERT` em `perfis` precisa do id do Auth, então a ordem é: `auth.admin.createUser` (`email_confirm: true`, senha inicial com mínimo de 8 caracteres) → `INSERT` em `perfis` → commit. Se o INSERT ou o commit falhar, a conta do Auth é excluída (compensação).
 - **Editar** (admin): nome, e-mail, papel e, opcionalmente, nova senha (mínimo 8 caracteres). Ordem: `UPDATE perfis` → `auth.admin.updateUserById` (e-mail com `email_confirm: true` e/ou senha) → commit.
 - **E-mail duplicado** chega como `email_exists` do Auth ou `23505` do índice `lower(email)`; ambos viram **409** "Já existe um usuário com este e-mail."
-- **Inativar** (admin): na transação, `ativo = false` + cancelamento das reservas futuras `pendente`/`aprovada` do usuário (histórico com `alterado_por` = admin) + bloqueio no Auth (`ban_duration: '876000h'`) → commit → e-mails. **Reativar:** `ativo = true` + `ban_duration: 'none'` → commit. Dados e histórico são mantidos (RF15).
+- **Inativar** (admin), nesta ordem, numa transação: `UPDATE perfis SET ativo = false` → `UPDATE reservas SET status = 'cancelada' WHERE usuario_id = $1 AND status IN ('pendente','aprovada') AND inicio > now() RETURNING ...` → histórico (`alterado_por` = admin) → bloqueio no Auth (`ban_duration: '876000h'`) → commit → e-mails. A ordem é obrigatória pelo mesmo motivo da inativação de sala. **Reativar:** `ativo = true` + `ban_duration: 'none'` → commit. Dados e histórico são mantidos (RF15).
 - Um admin não pode inativar a si mesmo nem remover o próprio papel de admin.
 - **E-mail de login × `perfis.email`:** o usuário consegue trocar o próprio e-mail de login pelo navegador (`supabase.auth.updateUser`). A opção "Secure email change" do Supabase fica ligada, `perfis.email` continua sendo a fonte da verdade para notificações, e o middleware `autenticar` registra em log quando os dois forem diferentes.
 
@@ -242,10 +244,11 @@ Todas as rotas exigem token válido e usuário ativo. Respostas em JSON.
 
 ### `GET /api/reservas`
 - Parâmetros `inicio` e `fim` **obrigatórios**, intervalo máximo de 62 dias. Retorna reservas que **se sobrepõem** à janela (`reservas.inicio < :fim AND reservas.fim > :inicio`), ordenadas por início.
-- Filtros opcionais: `salaId`, `tipo`, `status` (lista separada por vírgula, ex.: `status=recusada,cancelada`; o valor `expirada` seleciona pendentes cujo início já passou), `minhas=true`.
-- **Professor sem `minhas`** (calendário): somente `pendente`/`aprovada`, de todos os usuários — o filtro `status` só pode restringir dentro desse conjunto.
+- Filtros opcionais: `salaId`, `tipo`, `status` (lista separada por vírgula, ex.: `status=recusada,cancelada`), `minhas=true`.
+- Valores de `status` no filtro: `pendente` = pendente com início no futuro; `expirada` = pendente com início no passado; `aprovada`, `recusada`, `cancelada` = o próprio status.
+- **Professor sem `minhas`** (calendário): somente `pendente`, `expirada` e `aprovada`, de todos os usuários. Pedir outro valor de `status` → 400.
 - **Professor com `minhas=true`:** todas as próprias reservas, qualquer status.
-- **Admin:** sem filtro `status`, retorna `pendente`/`aprovada`; com filtro, qualquer combinação.
+- **Admin:** sem filtro `status`, retorna `pendente`, `expirada` e `aprovada`; com filtro, qualquer combinação.
 - Cada item traz sala (nome, tipo), solicitante (nome), horário, status, finalidade, motivo de recusa e `expirada` (booleano derivado).
 
 ### `GET /api/relatorios/mensal`
@@ -265,7 +268,11 @@ Todas as rotas exigem token válido e usuário ativo. Respostas em JSON.
 | Dados inválidos (Zod / regra) | 400 | "O horário de término deve ser depois do início." |
 | Conflito de horário (`23P01`) | 409 | "Esta sala já está reservada nesse horário." |
 | Transição de status inválida (inclui sala inativa no Aprovar) | 409 | "Esta reserva não pode mais ser alterada." |
-| E-mail ou nome de sala duplicado (`email_exists` / `23505`) | 409 | "Já existe um usuário com este e-mail." |
+| E-mail duplicado (`email_exists` do Auth / `23505` no índice de `lower(email)`) | 409 | "Já existe um usuário com este e-mail." |
+| Nome de sala duplicado (`23505` no índice de `lower(nome)`) | 409 | "Já existe uma sala com este nome." |
+| Deadlock entre operações simultâneas (`40P01`, raro: duas inativações ao mesmo tempo) | 409 | "Operação concorrente detectada. Tente novamente." |
+
+O `tratarErros` identifica o `23505` pelo `constraint_name` do erro, nunca de forma genérica.
 | Erro inesperado | 500 | "Erro interno. Tente novamente." (detalhes só no log) |
 
 ## 8. Interface
@@ -274,8 +281,8 @@ Todas as rotas exigem token válido e usuário ativo. Respostas em JSON.
 | Rota | Perfis | Conteúdo |
 |---|---|---|
 | `/login` | público | E-mail e senha |
-| `/` Calendário | todos | FullCalendar com visões dia/semana/mês; filtros por sala, tipo e status; eventos 🟨 pendente / 🟩 aprovada / ⬜ expirada com sala, horário, solicitante e finalidade; botão **"Nova reserva"**. **Clique em um evento** abre o modal de detalhes: dados da reserva, histórico de mudanças, botão cancelar (dono ou admin) e aprovar/recusar (admin, se pendente e não expirada) |
-| `/reservas` Histórico de reservas | todos | Professor: as próprias; admin: todas. Filtros por período, sala e status. Mostra status (incluindo "Expirada"), motivo de recusa, botão cancelar e o histórico de mudanças de cada reserva (RF08, RF13) |
+| `/` Calendário | todos | FullCalendar com visões dia/semana/mês; filtros por sala, tipo e status; eventos 🟨 pendente / 🟩 aprovada / ⬜ expirada com sala, horário, solicitante e finalidade; botão **"Nova reserva"**. **Clique em um evento** abre o modal de detalhes: dados da reserva, histórico de mudanças (exibido e buscado **apenas** para o dono ou admin), botão cancelar (dono ou admin) e aprovar/recusar (admin, se pendente e não expirada). O filtro de status do calendário oferece só pendente, aprovada e expirada |
+| `/reservas` Histórico de reservas | todos | Professor: as próprias (`minhas=true`); admin: todas (todos os status no filtro). Ao abrir, carrega o **mês corrente**; filtros por período (até 62 dias), sala e status. Mostra status (incluindo "Expirada"), motivo de recusa, botão cancelar e o histórico de mudanças de cada reserva (RF08, RF13) |
 | `/aprovacoes` | admin | Pendentes não expiradas (`GET /api/reservas/pendentes`), com aprovar / recusar (motivo obrigatório) |
 | `/salas` | admin | Listagem, cadastro, edição, inativar/reativar (com aviso de que reservas futuras serão canceladas) |
 | `/usuarios` | admin | Listagem, cadastro, edição (inclui nova senha), inativar/reativar (com o mesmo aviso) |
@@ -380,8 +387,8 @@ Conforme o RNF007, a contagem parte da **visualização da sala no calendário**
 
 1. Base: repositório, Supabase, migrações, primeiro admin, login, `/api/me`, layout com menu.
 2. Essenciais: salas, usuários, criar reserva com regra de conflito.
-3. Importantes: calendário completo com modal de detalhes, aprovação, cancelamento, tela `/reservas` básica (próprias reservas com status, motivo de recusa e cancelar), e-mails, inativação com cancelamento automático, timeout de sessão.
-4. Desejáveis: filtros avançados (calendário e `/reservas`, incluindo visão de todas para o admin), histórico de mudanças de status por reserva, relatório PDF.
+3. Importantes: calendário completo com modal de detalhes (ainda sem histórico de mudanças), aprovação, cancelamento, tela `/reservas` básica (próprias reservas com status, motivo de recusa e cancelar), e-mails, inativação com cancelamento automático, timeout de sessão.
+4. Desejáveis: filtros avançados (calendário e `/reservas`, incluindo visão de todas para o admin), histórico de mudanças de status por reserva (no modal e em `/reservas`), relatório PDF.
 
 ## 13. Fora do escopo
 
