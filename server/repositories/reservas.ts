@@ -11,6 +11,14 @@ export interface RepoReservas {
     status: StatusReserva;
     finalidade: string;
   }): Promise<Reserva>;
+  buscarPorId(id: string): Promise<Reserva | null>;
+  transicionar(p: {
+    id: string;
+    novo: StatusReserva;
+    permitidos: StatusReserva[];
+    motivo?: string;
+    exigirSalaAtiva: boolean;
+  }): Promise<Reserva | null>;
   buscarDetalhadas(ids: string[]): Promise<ReservaDetalhada[]>;
   listar(f: {
     inicio: Date;
@@ -40,6 +48,22 @@ export function criarRepoReservas(db: Executor): RepoReservas {
         values (${d.salaId}, ${d.usuarioId}, ${d.inicio}, ${d.fim}, ${d.status}, ${d.finalidade})
         returning id, sala_id, usuario_id, inicio, fim, status, finalidade, motivo_recusa, criado_em, atualizado_em`;
       return r;
+    },
+    async buscarPorId(id) {
+      const [r] = await db<Reserva[]>`
+        select id, sala_id, usuario_id, inicio, fim, status, finalidade, motivo_recusa, criado_em, atualizado_em
+        from reservas where id = ${id}`;
+      return r ?? null;
+    },
+    async transicionar(p) {
+      const [r] = await db<Reserva[]>`
+        update reservas set status = ${p.novo}, motivo_recusa = ${p.motivo ?? null}, atualizado_em = now()
+        where id = ${p.id}
+          and status in ${db(p.permitidos)}
+          and inicio > now()
+          ${p.exigirSalaAtiva ? db`and exists (select 1 from salas s where s.id = reservas.sala_id and s.ativa)` : db``}
+        returning id, sala_id, usuario_id, inicio, fim, status, finalidade, motivo_recusa, criado_em, atualizado_em`;
+      return r ?? null;
     },
     async buscarDetalhadas(ids) {
       if (ids.length === 0) return [];

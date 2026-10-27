@@ -3,7 +3,9 @@ import type { Perfil, ReservaDTO } from '../../shared/tipos';
 import type { DadosCriarReserva, FiltroReservas } from '../../shared/esquemas';
 import type { StatusFiltro } from '../../shared/constantes';
 import { validarJanelaReserva } from '../../shared/horario';
-import { invalido, proibido } from '../lib/erros';
+import type { StatusReserva } from '../../shared/constantes';
+import type { TipoEmail } from '../lib/notificador';
+import { conflito, invalido, naoEncontrado, proibido } from '../lib/erros';
 import { paraReservaDTO } from '../lib/dto';
 import { agruparPorSolicitante } from './notificacoes';
 
@@ -11,7 +13,40 @@ const PADRAO: StatusFiltro[] = ['pendente', 'expirada', 'aprovada'];
 const TODOS: StatusFiltro[] = ['pendente', 'expirada', 'aprovada', 'recusada', 'cancelada'];
 
 export function criarServicoReservas(deps: DependenciasApp) {
+  async function transicionar(
+    usuario: Perfil, id: string, cfg: {
+      novo: StatusReserva; permitidos: StatusReserva[]; exigirSalaAtiva: boolean; motivo?: string;
+      tipo: TipoEmail; apenasDonoOuAdmin?: boolean;
+    },
+  ): Promise<ReservaDTO> {
+    const agora = deps.agora();
+    const detalhada = await deps.transacao(async (r) => {
+      const atual = await r.reservas.buscarPorId(id);
+      if (!atual) throw naoEncontrado('Reserva não encontrada.');
+      if (cfg.apenasDonoOuAdmin && usuario.papel !== 'admin' && atual.usuarioId !== usuario.id) throw proibido();
+      const nova = await r.reservas.transicionar({
+        id, novo: cfg.novo, permitidos: cfg.permitidos, exigirSalaAtiva: cfg.exigirSalaAtiva,
+        ...(cfg.motivo !== undefined ? { motivo: cfg.motivo } : {}),
+      });
+      if (!nova) throw conflito('Esta reserva não pode mais ser alterada.');
+      await r.historico.registrar([
+        { reservaId: id, anterior: atual.status, novo: cfg.novo, alteradoPor: usuario.id },
+      ]);
+      const [det] = await r.reservas.buscarDetalhadas([id]);
+      return det;
+    });
+    await deps.notificar(agruparPorSolicitante([detalhada], cfg.tipo));
+    return paraReservaDTO(detalhada, agora);
+  }
   return {
+    aprovar: (usuario: Perfil, id: string) =>
+      transicionar(usuario, id, { novo: 'aprovada', permitidos: ['pendente'], exigirSalaAtiva: true, tipo: 'aprovada' }),
+    recusar: (usuario: Perfil, id: string, motivo: string) =>
+      transicionar(usuario, id, { novo: 'recusada', permitidos: ['pendente'], exigirSalaAtiva: false, motivo, tipo: 'recusada' }),
+    cancelar: (usuario: Perfil, id: string) =>
+      transicionar(usuario, id, {
+        novo: 'cancelada', permitidos: ['pendente', 'aprovada'], exigirSalaAtiva: false, tipo: 'cancelada', apenasDonoOuAdmin: true,
+      }),
     async criar(usuario: Perfil, d: DadosCriarReserva): Promise<ReservaDTO> {
       const inicio = new Date(d.inicio);
       const fim = new Date(d.fim);
