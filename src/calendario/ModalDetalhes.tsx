@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { esquemaRecusar } from '../../shared/esquemas';
 import type { Perfil, ReservaDTO } from '../../shared/tipos';
 import Modal from '../components/Modal';
-import { useAprovar, useCancelar, useRecusar } from '../consultas/reservas';
-import { ROTULO_STATUS } from '../rotulos';
+import { useAprovar, useCancelar, useHistorico, useRecusar } from '../consultas/reservas';
+import { formatarDataHora, ROTULO_STATUS } from '../rotulos';
 
 interface Props { reserva: ReservaDTO; perfil: Perfil; aoFechar: () => void }
 
@@ -30,6 +30,8 @@ export default function ModalDetalhes({ reserva, perfil, aoFechar }: Props) {
   const podeDecidir = admin && reserva.status === 'pendente' && !reserva.expirada;
   const ocupado = aprovar.isPending || recusar.isPending || cancelar.isPending;
   const erro = aprovar.error?.message ?? recusar.error?.message ?? cancelar.error?.message ?? null;
+  const verHistorico = admin || reserva.usuarioId === perfil.id;
+  const historico = useHistorico(reserva.id, verHistorico);
   const status = reserva.expirada ? ROTULO_STATUS.expirada : ROTULO_STATUS[reserva.status];
 
   async function executar(p: Promise<unknown>) {
@@ -56,6 +58,20 @@ export default function ModalDetalhes({ reserva, perfil, aoFechar }: Props) {
           <div><dt className="inline font-medium">Motivo da recusa: </dt><dd className="inline">{reserva.motivoRecusa}</dd></div>
         )}
       </dl>
+
+      {verHistorico && historico.data && historico.data.length > 0 && (
+        <section className="mt-3">
+          <h3 className="text-sm font-medium">Histórico</h3>
+          <ul className="mt-1 space-y-1 text-xs text-slate-600">
+            {historico.data.map((e, i) => (
+              <li key={i}>
+                {formatarDataHora(e.alteradoEm)} — {e.statusAnterior ? ROTULO_STATUS[e.statusAnterior] : 'Criada'} →{' '}
+                {ROTULO_STATUS[e.statusNovo]} — por {e.alteradoPorNome}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {recusando && (
         <div className="mt-3 space-y-2">

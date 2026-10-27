@@ -21,3 +21,10 @@ export const ROTULO_STATUS: Record<string, string> = {
 
 export const CONFIRMA_INATIVAR =
   'As reservas futuras serão canceladas e os solicitantes avisados por e-mail. Continuar?';
+
+const dois = (n: number) => String(n).padStart(2, '0');
+
+export function formatarDataHora(iso: string): string {
+  const d = new Date(iso);
+  return `${dois(d.getDate())}/${dois(d.getMonth() + 1)}/${d.getFullYear()} ${dois(d.getHours())}:${dois(d.getMinutes())}`;
+}

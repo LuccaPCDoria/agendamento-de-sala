@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom/vitest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -64,7 +64,31 @@ describe('ModalDetalhes', () => {
     montar(reserva, admin);
     await user.click(screen.getByRole('button', { name: 'Recusar' }));
     await user.click(screen.getByRole('button', { name: 'Confirmar recusa' }));
-    expect(apiMock).not.toHaveBeenCalled();
+    expect(apiMock.mock.calls.filter((c) => c[1]?.metodo === 'POST')).toHaveLength(0);
     expect(screen.getByText('Informe o motivo da recusa.')).toBeInTheDocument();
+  });
+
+  it('professor que não é dono não chama nem mostra o histórico', async () => {
+    montar(reserva, outro);
+    await new Promise((r) => setTimeout(r, 50));
+    expect(apiMock).not.toHaveBeenCalled();
+    expect(screen.queryByText('Histórico')).toBeNull();
+  });
+
+  it('dono vê o histórico formatado', async () => {
+    apiMock.mockResolvedValue([
+      { statusAnterior: null, statusNovo: 'pendente', alteradoPorNome: 'Ana', alteradoEm: new Date(2026, 10, 2, 10, 5).toISOString() },
+      { statusAnterior: 'pendente', statusNovo: 'aprovada', alteradoPorNome: 'Direção', alteradoEm: new Date(2026, 10, 2, 11, 30).toISOString() },
+    ]);
+    montar(reserva, dono);
+    expect(await screen.findByText('02/11/2026 10:05 — Criada → Pendente — por Ana')).toBeInTheDocument();
+    expect(screen.getByText('02/11/2026 11:30 — Pendente → Aprovada — por Direção')).toBeInTheDocument();
+    expect(apiMock).toHaveBeenCalledWith('/reservas/r1/historico');
+  });
+
+  it('admin também busca o histórico', async () => {
+    apiMock.mockResolvedValue([]);
+    montar(reserva, admin);
+    await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/reservas/r1/historico'));
   });
 });

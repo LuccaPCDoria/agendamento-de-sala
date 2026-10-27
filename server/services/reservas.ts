@@ -1,5 +1,5 @@
 import type { DependenciasApp } from '../dependencias';
-import type { Perfil, ReservaDTO } from '../../shared/tipos';
+import type { EntradaHistoricoDTO, Perfil, ReservaDTO } from '../../shared/tipos';
 import type { DadosCriarReserva, FiltroReservas } from '../../shared/esquemas';
 import { validarJanelaReserva } from '../../shared/horario';
 import type { StatusFiltro, StatusReserva } from '../../shared/constantes';
@@ -85,6 +85,12 @@ export function criarServicoReservas(deps: DependenciasApp) {
         status, usuarioId: f.minhas ? usuario.id : undefined, agora,
       });
       return lista.map((r) => paraReservaDTO(r, agora));
+    },
+    async historico(usuario: Perfil, id: string): Promise<EntradaHistoricoDTO[]> {
+      const atual = await deps.repos.reservas.buscarPorId(id);
+      if (!atual) throw naoEncontrado('Reserva não encontrada.');
+      if (usuario.papel !== 'admin' && atual.usuarioId !== usuario.id) throw proibido();
+      return deps.repos.historico.listarDaReserva(id);
     },
     async listarPendentes(): Promise<ReservaDTO[]> {
       const agora = deps.agora();

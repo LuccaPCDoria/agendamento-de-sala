@@ -6,7 +6,10 @@ import timeGridPlugin from '@fullcalendar/timegrid';
 import listPlugin from '@fullcalendar/list';
 import interactionPlugin from '@fullcalendar/interaction';
 import ptBr from '@fullcalendar/core/locales/pt-br';
-import { DIAS_FUNCIONAMENTO, HORA_ABERTURA, HORA_FECHAMENTO } from '../../shared/constantes';
+import {
+  DIAS_FUNCIONAMENTO, HORA_ABERTURA, HORA_FECHAMENTO, TIPOS_SALA,
+  type StatusFiltro, type TipoSala,
+} from '../../shared/constantes';
 import { reservaParaEvento } from '../calendario/eventos';
 import ModalDetalhes from '../calendario/ModalDetalhes';
 import ModalNovaReserva from '../calendario/ModalNovaReserva';
@@ -14,6 +17,9 @@ import type { ReservaDTO } from '../../shared/tipos';
 import { useAuth } from '../auth/AuthProvider';
 import { buscarReservas } from '../consultas/reservas';
 import { useSalas } from '../consultas/salas';
+import { ROTULO_STATUS, ROTULO_TIPO } from '../rotulos';
+
+const STATUS_CALENDARIO: StatusFiltro[] = ['pendente', 'aprovada', 'expirada'];
 
 interface Selecao { inicio?: Date; fim?: Date }
 
@@ -24,13 +30,20 @@ export default function Calendario() {
   const [selecao, setSelecao] = useState<Selecao | null>(null);
   const { perfil } = useAuth();
   const [detalhe, setDetalhe] = useState<ReservaDTO | null>(null);
+  const [tipo, setTipo] = useState<TipoSala | ''>('');
+  const [status, setStatus] = useState<StatusFiltro[]>(STATUS_CALENDARIO);
   const salaIdRef = useRef(salaId);
+  const tipoRef = useRef<TipoSala | ''>('');
+  const statusRef = useRef<StatusFiltro[]>(STATUS_CALENDARIO);
 
   const visaoInicial = window.matchMedia?.('(max-width: 640px)').matches ? 'listWeek' : 'timeGridWeek';
 
   const buscarEventos = useCallback(
     (info: { startStr: string; endStr: string }, ok: (e: EventInput[]) => void, falha: (e: Error) => void) => {
-      buscarReservas({ inicio: info.startStr, fim: info.endStr, salaId: salaIdRef.current || undefined })
+      buscarReservas({
+        inicio: info.startStr, fim: info.endStr, salaId: salaIdRef.current || undefined,
+        tipo: tipoRef.current || undefined, status: statusRef.current,
+      })
         .then((rs) => ok(rs.map(reservaParaEvento)))
         .catch(falha);
     },
@@ -40,6 +53,20 @@ export default function Calendario() {
   function alterarSala(id: string) {
     setSalaId(id);
     salaIdRef.current = id;
+    calendarRef.current?.getApi().refetchEvents();
+  }
+
+  function alterarTipo(t: TipoSala | '') {
+    setTipo(t);
+    tipoRef.current = t;
+    calendarRef.current?.getApi().refetchEvents();
+  }
+
+  function alternarStatus(st: StatusFiltro) {
+    const novo = STATUS_CALENDARIO.filter((x) => (x === st ? !status.includes(x) : status.includes(x)));
+    if (novo.length === 0) return;
+    setStatus(novo);
+    statusRef.current = novo;
     calendarRef.current?.getApi().refetchEvents();
   }
 
@@ -67,10 +94,28 @@ export default function Calendario() {
               {salas.map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}
             </select>
           </label>
+          <label className="text-sm">
+            <span className="sr-only">Filtrar por tipo</span>
+            <select value={tipo} onChange={(e) => alterarTipo(e.target.value as TipoSala | '')}
+              className="rounded border px-3 py-2">
+              <option value="">Todas</option>
+              {TIPOS_SALA.map((t) => <option key={t} value={t}>{ROTULO_TIPO[t]}</option>)}
+            </select>
+          </label>
           <button type="button" onClick={() => setSelecao({})}
             className="rounded bg-blue-600 px-3 py-2 text-white">Nova reserva</button>
         </div>
       </div>
+
+      <fieldset className="flex flex-wrap items-center gap-3 text-sm">
+        <legend className="sr-only">Filtrar por status</legend>
+        {STATUS_CALENDARIO.map((st) => (
+          <label key={st} className="flex items-center gap-1">
+            <input type="checkbox" checked={status.includes(st)} onChange={() => alternarStatus(st)} />
+            {ROTULO_STATUS[st]}
+          </label>
+        ))}
+      </fieldset>
 
       <FullCalendar
         ref={calendarRef}

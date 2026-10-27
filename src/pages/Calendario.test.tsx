@@ -37,4 +37,21 @@ describe('Calendario', () => {
     // fechar() faz um refetch explícito; abrir o modal não pode ter feito nenhum
     expect(reservas()).toBe(2);
   });
+
+  it('filtros de tipo e status refazem a busca com os parâmetros', async () => {
+    const user = userEvent.setup();
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <Calendario />
+      </QueryClientProvider>,
+    );
+    const ultima = () => apiMock.mock.calls.filter((c) => c[0] === '/reservas').at(-1)?.[1]?.query;
+    await waitFor(() => expect(ultima()).toBeDefined());
+    expect(ultima().tipo).toBeUndefined();
+    expect(screen.queryByRole('checkbox', { name: 'Recusada' })).toBeNull();
+    await user.selectOptions(screen.getByLabelText('Filtrar por tipo'), 'laboratorio');
+    await waitFor(() => expect(ultima().tipo).toBe('laboratorio'));
+    await user.click(screen.getByRole('checkbox', { name: 'Expirada' }));
+    await waitFor(() => expect(ultima().status).toBe('pendente,aprovada'));
+  });
 });

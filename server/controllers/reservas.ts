@@ -42,5 +42,10 @@ export function criarControladorReservas(deps: DependenciasApp) {
       res.json(await servico.cancelar(req.usuario!, idValido(req.params.id)));
     } catch (e) { next(e); }
   };
-  return { criar, listar, listarPendentes, aprovar, recusar, cancelar };
+  const historico: RequestHandler = async (req, res, next) => {
+    try {
+      res.json(await servico.historico(req.usuario!, idValido(req.params.id)));
+    } catch (e) { next(e); }
+  };
+  return { criar, listar, historico, listarPendentes, aprovar, recusar, cancelar };
 }

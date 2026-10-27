@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { StatusFiltro, TipoSala } from '../../shared/constantes';
 import type { DadosCriarReserva } from '../../shared/esquemas';
-import type { ReservaDTO } from '../../shared/tipos';
+import type { EntradaHistoricoDTO, ReservaDTO } from '../../shared/tipos';
 import { api } from '../lib/api';
 
 export interface FiltroBuscaReservas {
@@ -40,16 +40,25 @@ export function useCriarReserva() {
 function invalidar(qc: ReturnType<typeof useQueryClient>) {
   void qc.invalidateQueries({ queryKey: ['reservas'] });
   void qc.invalidateQueries({ queryKey: ['pendentes'] });
+  void qc.invalidateQueries({ queryKey: ['historico'] });
 }
 
 export function usePendentes() {
   return useQuery({ queryKey: ['pendentes'], queryFn: () => api<ReservaDTO[]>('/reservas/pendentes') });
 }
 
-export function useReservasPeriodo(inicio: string, fim: string, minhas: boolean) {
+export function useReservasPeriodo(filtro: FiltroBuscaReservas) {
   return useQuery({
-    queryKey: ['reservas', { inicio, fim, minhas }],
-    queryFn: () => buscarReservas({ inicio, fim, minhas }),
+    queryKey: ['reservas', filtro],
+    queryFn: () => buscarReservas(filtro),
+  });
+}
+
+export function useHistorico(id: string, habilitado: boolean) {
+  return useQuery({
+    queryKey: ['historico', id],
+    queryFn: () => api<EntradaHistoricoDTO[]>(`/reservas/${id}/historico`),
+    enabled: habilitado,
   });
 }
 
