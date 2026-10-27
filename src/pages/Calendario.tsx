@@ -1,4 +1,5 @@
-import { useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
+import type { EventInput } from '@fullcalendar/core';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
@@ -21,6 +22,15 @@ export default function Calendario() {
   const salaIdRef = useRef(salaId);
 
   const visaoInicial = window.matchMedia?.('(max-width: 640px)').matches ? 'listWeek' : 'timeGridWeek';
+
+  const buscarEventos = useCallback(
+    (info: { startStr: string; endStr: string }, ok: (e: EventInput[]) => void, falha: (e: Error) => void) => {
+      buscarReservas({ inicio: info.startStr, fim: info.endStr, salaId: salaIdRef.current || undefined })
+        .then((rs) => ok(rs.map(reservaParaEvento)))
+        .catch(falha);
+    },
+    [],
+  );
 
   function alterarSala(id: string) {
     setSalaId(id);
@@ -65,16 +75,16 @@ export default function Calendario() {
         selectConstraint="businessHours"
         selectable
         height="auto"
-        events={(info, ok, falha) => {
-          buscarReservas({ inicio: info.startStr, fim: info.endStr, salaId: salaIdRef.current || undefined })
-            .then((rs) => ok(rs.map(reservaParaEvento)))
-            .catch(falha);
-        }}
+        events={buscarEventos}
+        allDaySlot={false}
         dateClick={(info) => {
           if (info.view.type === 'dayGridMonth') info.view.calendar.changeView('timeGridDay', info.date);
         }}
         select={(info) => {
-          if (info.view.type === 'dayGridMonth') return;
+          if (info.view.type === 'dayGridMonth') {
+            info.view.calendar.unselect();
+            return;
+          }
           setSelecao({ inicio: info.start, fim: info.end });
         }}
       />
