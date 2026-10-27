@@ -1,4 +1,5 @@
 import { criarRepos, criarSql, criarTransacao, type Repos, type Transacao } from './lib/db';
+import { criarAuthAdmin } from './lib/supabaseAdmin';
 import { notificadorNulo, type Notificador } from './lib/notificador';
 
 export interface AuthAdmin {
@@ -18,25 +19,20 @@ export interface DependenciasApp {
   agora: () => Date;
 }
 
-const naoImplementado = async (): Promise<never> => {
-  throw new Error('não implementado');
-};
-
 /** Lê process.env apenas quando chamada (nunca na importação). */
 export function dependenciasPadrao(): DependenciasApp {
   const url = process.env.DATABASE_URL;
   if (!url) throw new Error('DATABASE_URL não configurada');
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const chave = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!supabaseUrl || !chave) throw new Error('SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY não configuradas');
   const sql = criarSql(url);
+  const { authAdmin, verificarToken } = criarAuthAdmin(supabaseUrl, chave);
   return {
-    verificarToken: async () => null, // implementação real na Task 5
+    verificarToken,
     repos: criarRepos(sql),
     transacao: criarTransacao(sql),
-    authAdmin: {
-      criarUsuario: naoImplementado,
-      atualizarUsuario: naoImplementado,
-      excluirUsuario: naoImplementado,
-      definirBloqueio: naoImplementado,
-    },
+    authAdmin,
     notificar: notificadorNulo,
     agora: () => new Date(),
   };

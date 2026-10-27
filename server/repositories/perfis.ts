@@ -1,9 +1,16 @@
 import type { Executor } from '../lib/db';
+import type { Perfil } from '../../shared/tipos';
 
-// Os métodos são adicionados nas tarefas seguintes.
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
-export interface RepoPerfis {}
+export interface RepoPerfis {
+  buscarPorId(id: string): Promise<Perfil | null>;
+}
 
-export function criarRepoPerfis(_db: Executor): RepoPerfis {
-  return {};
+export function criarRepoPerfis(db: Executor): RepoPerfis {
+  return {
+    async buscarPorId(id) {
+      const [perfil] = await db<Perfil[]>`
+        select id, nome, email, papel, ativo from perfis where id = ${id}`;
+      return perfil ?? null;
+    },
+  };
 }

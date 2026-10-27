@@ -3,13 +3,51 @@ import { randomUUID } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
 import type { Papel } from '../../shared/constantes';
 import type { Perfil, Sala } from '../../shared/tipos';
-import { criarSql } from '../../server/lib/db';
+import { readFileSync } from 'node:fs';
+import { criarRepos, criarSql, criarTransacao } from '../../server/lib/db';
+import { criarAuthAdmin } from '../../server/lib/supabaseAdmin';
+import { notificadorNulo } from '../../server/lib/notificador';
+import type { DependenciasApp } from '../../server/dependencias';
 
 function env(nome: string): string {
   const v = process.env[nome];
   if (!v) throw new Error(`Variável ${nome} ausente (.env.test)`);
   return v;
 }
+
+/** Valores do .env de produção (se existir), sem imprimir nada. */
+function lerEnvProducao(): Record<string, string> {
+  const r: Record<string, string> = {};
+  try {
+    for (const linha of readFileSync('.env', 'utf8').split(/\r?\n/)) {
+      const m = /^\s*(?:export\s+)?(DATABASE_URL|SUPABASE_URL)\s*=\s*(.*?)\s*$/.exec(linha);
+      if (m) r[m[1]] = m[2].replace(/^(['"])(.*)\1$/, '$2');
+    }
+  } catch {
+    /* sem .env */
+  }
+  return r;
+}
+
+function refDoBanco(url: string | undefined): string | null {
+  if (!url) return null;
+  const usuario = /^[a-z]+:\/\/([^:@/]+)/i.exec(url)?.[1] ?? '';
+  const doUsuario = /^[^.]+\.([a-z0-9]+)$/i.exec(usuario)?.[1]; // pooler: postgres.<ref>
+  if (doUsuario) return doUsuario;
+  return /@db\.([a-z0-9]+)\./i.exec(url)?.[1] ?? null;
+}
+
+function garantirAlvoNaoProducao(): void {
+  const prod = lerEnvProducao();
+  const mesmoSupabase = !!prod.SUPABASE_URL && env('TEST_SUPABASE_URL') === prod.SUPABASE_URL;
+  const refProd = refDoBanco(prod.DATABASE_URL);
+  const mesmoBanco = !!refProd && refDoBanco(env('TEST_DATABASE_URL')) === refProd;
+  if (mesmoSupabase || mesmoBanco) {
+    throw new Error('TEST_* aponta para o mesmo projeto de produção — abortando');
+  }
+}
+
+garantirAlvoNaoProducao();
 
 export const sqlTeste = criarSql(env('TEST_DATABASE_URL'));
 
@@ -64,4 +102,20 @@ export async function criarUsuarioTeste(papel: Papel): Promise<{ perfil: Perfil;
   const { data: sessao, error: erroLogin } = await anon.auth.signInWithPassword({ email, password: senha });
   if (erroLogin || !sessao.session) throw erroLogin ?? new Error('Falha no login de teste');
   return { perfil, token: sessao.session.access_token };
+}
+
+export function depsIntegracao(): DependenciasApp {
+  const sql = criarSql(env('TEST_DATABASE_URL'));
+  const { authAdmin, verificarToken } = criarAuthAdmin(
+    env('TEST_SUPABASE_URL'),
+    env('TEST_SUPABASE_SERVICE_ROLE_KEY'),
+  );
+  return {
+    verificarToken,
+    repos: criarRepos(sql),
+    transacao: criarTransacao(sql),
+    authAdmin,
+    notificar: notificadorNulo,
+    agora: () => new Date(),
+  };
 }
