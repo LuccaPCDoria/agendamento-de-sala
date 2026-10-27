@@ -271,9 +271,9 @@ Todas as rotas exigem token válido e usuário ativo. Respostas em JSON.
 | E-mail duplicado (`email_exists` do Auth / `23505` no índice de `lower(email)`) | 409 | "Já existe um usuário com este e-mail." |
 | Nome de sala duplicado (`23505` no índice de `lower(nome)`) | 409 | "Já existe uma sala com este nome." |
 | Deadlock entre operações simultâneas (`40P01`, raro: duas inativações ao mesmo tempo) | 409 | "Operação concorrente detectada. Tente novamente." |
+| Erro inesperado | 500 | "Erro interno. Tente novamente." (detalhes só no log) |
 
 O `tratarErros` identifica o `23505` pelo `constraint_name` do erro, nunca de forma genérica.
-| Erro inesperado | 500 | "Erro interno. Tente novamente." (detalhes só no log) |
 
 ## 8. Interface
 
@@ -282,7 +282,7 @@ O `tratarErros` identifica o `23505` pelo `constraint_name` do erro, nunca de fo
 |---|---|---|
 | `/login` | público | E-mail e senha |
 | `/` Calendário | todos | FullCalendar com visões dia/semana/mês; filtros por sala, tipo e status; eventos 🟨 pendente / 🟩 aprovada / ⬜ expirada com sala, horário, solicitante e finalidade; botão **"Nova reserva"**. **Clique em um evento** abre o modal de detalhes: dados da reserva, histórico de mudanças (exibido e buscado **apenas** para o dono ou admin), botão cancelar (dono ou admin) e aprovar/recusar (admin, se pendente e não expirada). O filtro de status do calendário oferece só pendente, aprovada e expirada |
-| `/reservas` Histórico de reservas | todos | Professor: as próprias (`minhas=true`); admin: todas (todos os status no filtro). Ao abrir, carrega o **mês corrente**; filtros por período (até 62 dias), sala e status. Mostra status (incluindo "Expirada"), motivo de recusa, botão cancelar e o histórico de mudanças de cada reserva (RF08, RF13) |
+| `/reservas` Histórico de reservas | todos | Professor: as próprias (`minhas=true`); admin: todas, abrindo com os cinco status marcados (`status=pendente,expirada,aprovada,recusada,cancelada`). Ao abrir, carrega o **mês corrente**; filtros por período (até 62 dias), sala e status. Mostra status (incluindo "Expirada"), motivo de recusa, botão cancelar e o histórico de mudanças de cada reserva (RF08, RF13) |
 | `/aprovacoes` | admin | Pendentes não expiradas (`GET /api/reservas/pendentes`), com aprovar / recusar (motivo obrigatório) |
 | `/salas` | admin | Listagem, cadastro, edição, inativar/reativar (com aviso de que reservas futuras serão canceladas) |
 | `/usuarios` | admin | Listagem, cadastro, edição (inclui nova senha), inativar/reativar (com o mesmo aviso) |
@@ -387,8 +387,8 @@ Conforme o RNF007, a contagem parte da **visualização da sala no calendário**
 
 1. Base: repositório, Supabase, migrações, primeiro admin, login, `/api/me`, layout com menu.
 2. Essenciais: salas, usuários, criar reserva com regra de conflito.
-3. Importantes: calendário completo com modal de detalhes (ainda sem histórico de mudanças), aprovação, cancelamento, tela `/reservas` básica (próprias reservas com status, motivo de recusa e cancelar), e-mails, inativação com cancelamento automático, timeout de sessão.
-4. Desejáveis: filtros avançados (calendário e `/reservas`, incluindo visão de todas para o admin), histórico de mudanças de status por reserva (no modal e em `/reservas`), relatório PDF.
+3. Importantes: calendário completo com **filtro de sala** (necessário ao RNF007) e modal de detalhes (ainda sem histórico de mudanças), aprovação, cancelamento, tela `/reservas` básica (próprias reservas com status, motivo de recusa, cancelar e **seletor de período**), e-mails, inativação com cancelamento automático, timeout de sessão.
+4. Desejáveis: filtros por tipo e status (calendário e `/reservas`), visão de todas as reservas para o admin em `/reservas`, histórico de mudanças de status por reserva (no modal e em `/reservas`), relatório PDF.
 
 ## 13. Fora do escopo
 
