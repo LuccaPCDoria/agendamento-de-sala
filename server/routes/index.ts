@@ -5,6 +5,7 @@ import { me } from '../controllers/me';
 import { criarRotasSalas } from './salas';
 import { criarRotasUsuarios } from './usuarios';
 import { exigirAdmin } from '../middlewares/exigirAdmin';
+import { criarRotasReservas } from './reservas';
 
 export function criarRotas(deps: DependenciasApp): Router {
   const router = Router();
@@ -13,6 +14,7 @@ export function criarRotas(deps: DependenciasApp): Router {
   router.get('/me', auth, me);
   router.use('/salas', auth, criarRotasSalas(deps));
   router.use('/usuarios', auth, exigirAdmin, criarRotasUsuarios(deps));
+  router.use('/reservas', auth, criarRotasReservas(deps));
   // As tarefas seguintes montam os routers aqui, também atrás de `auth`.
   return router;
 }
