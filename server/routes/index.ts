@@ -3,6 +3,8 @@ import type { DependenciasApp } from '../dependencias';
 import { autenticar } from '../middlewares/autenticar';
 import { me } from '../controllers/me';
 import { criarRotasSalas } from './salas';
+import { criarRotasUsuarios } from './usuarios';
+import { exigirAdmin } from '../middlewares/exigirAdmin';
 
 export function criarRotas(deps: DependenciasApp): Router {
   const router = Router();
@@ -10,6 +12,7 @@ export function criarRotas(deps: DependenciasApp): Router {
   const auth = autenticar(deps);
   router.get('/me', auth, me);
   router.use('/salas', auth, criarRotasSalas(deps));
+  router.use('/usuarios', auth, exigirAdmin, criarRotasUsuarios(deps));
   // As tarefas seguintes montam os routers aqui, também atrás de `auth`.
   return router;
 }
