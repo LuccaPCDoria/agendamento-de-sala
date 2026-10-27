@@ -15,7 +15,7 @@ const reserva = {
 function montar() {
   const deps = depsFalsas();
   const { repos } = deps;
-  vi.mocked(repos.reservas.buscarPorId).mockResolvedValue(reserva);
+  vi.mocked(repos.reservas.buscarPorIdParaAtualizar).mockResolvedValue(reserva);
   vi.mocked(repos.reservas.transicionar).mockImplementation(async (p) => ({ ...reserva, status: p.novo, motivoRecusa: p.motivo ?? null }));
   vi.mocked(repos.reservas.buscarDetalhadas).mockImplementation(async () => [
     { ...reserva, salaNome: 'S', salaTipo: 'reuniao', solicitanteNome: 'P', solicitanteEmail: 'p@x.com' } as ReservaDetalhada,
@@ -26,18 +26,27 @@ function montar() {
 describe('servicoReservas transições', () => {
   it('ordem 404 → 403 → 409', async () => {
     const { repos, servico } = montar();
-    vi.mocked(repos.reservas.buscarPorId).mockResolvedValue(null);
+    vi.mocked(repos.reservas.buscarPorIdParaAtualizar).mockResolvedValue(null);
     await expect(servico.cancelar(professor, ID)).rejects.toMatchObject({ status: 404, message: 'Reserva não encontrada.' });
-    vi.mocked(repos.reservas.buscarPorId).mockResolvedValue({ ...reserva, usuarioId: 'outro' });
+    vi.mocked(repos.reservas.buscarPorIdParaAtualizar).mockResolvedValue({ ...reserva, usuarioId: 'outro' });
     await expect(servico.cancelar(professor, ID)).rejects.toMatchObject({ status: 403 });
-    vi.mocked(repos.reservas.buscarPorId).mockResolvedValue({ ...reserva, usuarioId: professor.id });
+    vi.mocked(repos.reservas.buscarPorIdParaAtualizar).mockResolvedValue({ ...reserva, usuarioId: professor.id });
     vi.mocked(repos.reservas.transicionar).mockResolvedValue(null);
     await expect(servico.cancelar(professor, ID)).rejects.toMatchObject({ status: 409, message: 'Esta reserva não pode mais ser alterada.' });
     expect(repos.historico.registrar).not.toHaveBeenCalled();
   });
+  it('professor não aprova nem recusa: 404 se ausente, 403 sem chamar transicionar', async () => {
+    const { repos, servico } = montar();
+    vi.mocked(repos.reservas.buscarPorIdParaAtualizar).mockResolvedValue(null);
+    await expect(servico.aprovar(professor, ID)).rejects.toMatchObject({ status: 404 });
+    vi.mocked(repos.reservas.buscarPorIdParaAtualizar).mockResolvedValue(reserva);
+    await expect(servico.aprovar(professor, ID)).rejects.toMatchObject({ status: 403 });
+    await expect(servico.recusar(professor, ID, 'x')).rejects.toMatchObject({ status: 403 });
+    expect(repos.reservas.transicionar).not.toHaveBeenCalled();
+  });
   it('admin cancela reserva alheia', async () => {
     const { repos, servico } = montar();
-    vi.mocked(repos.reservas.buscarPorId).mockResolvedValue({ ...reserva, usuarioId: 'outro' });
+    vi.mocked(repos.reservas.buscarPorIdParaAtualizar).mockResolvedValue({ ...reserva, usuarioId: 'outro' });
     await servico.cancelar(admin, ID);
     expect(repos.reservas.transicionar).toHaveBeenCalledWith(
       expect.objectContaining({ id: ID, novo: 'cancelada', permitidos: ['pendente', 'aprovada'], exigirSalaAtiva: false }),

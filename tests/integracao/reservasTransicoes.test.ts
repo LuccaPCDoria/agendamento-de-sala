@@ -101,4 +101,22 @@ describe('transições de reservas', () => {
     const h = await sqlTeste`select status_anterior from historico_reservas where reserva_id = ${id}`;
     expect(h).toHaveLength(1);
   }, 20_000);
+  it('aprovar × cancelar simultâneos: cadeia de histórico consistente', async () => {
+    const adm = await criarUsuarioTeste('admin');
+    const prof = await criarUsuarioTeste('usuario');
+    const sala = await criarSalaTeste();
+    const id = await inserirReserva(prof.perfil.id, sala.id, 'pendente', 5);
+    await sqlTeste`insert into historico_reservas (reserva_id, status_anterior, status_novo, alterado_por)
+      values (${id}, null, 'pendente', ${prof.perfil.id})`;
+    const [a, b] = [novoClienteSql(), novoClienteSql()];
+    extras.push(a, b);
+    const servA = criarServicoReservas({ ...depsIntegracao(), transacao: criarTransacao(a) });
+    const servB = criarServicoReservas({ ...depsIntegracao(), transacao: criarTransacao(b) });
+    await Promise.allSettled([servA.aprovar(adm.perfil, id), servB.cancelar(prof.perfil, id)]);
+    const h = await sqlTeste<{ statusAnterior: string | null; statusNovo: string }[]>`
+      select status_anterior, status_novo from historico_reservas where reserva_id = ${id} order by alterado_em, id`;
+    expect(h.length).toBeGreaterThanOrEqual(2);
+    expect(h[0]).toMatchObject({ statusAnterior: null, statusNovo: 'pendente' });
+    for (let i = 1; i < h.length; i++) expect(h[i].statusAnterior).toBe(h[i - 1].statusNovo);
+  }, 20_000);
 });

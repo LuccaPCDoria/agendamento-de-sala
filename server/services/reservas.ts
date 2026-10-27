@@ -1,9 +1,8 @@
 import type { DependenciasApp } from '../dependencias';
 import type { Perfil, ReservaDTO } from '../../shared/tipos';
 import type { DadosCriarReserva, FiltroReservas } from '../../shared/esquemas';
-import type { StatusFiltro } from '../../shared/constantes';
 import { validarJanelaReserva } from '../../shared/horario';
-import type { StatusReserva } from '../../shared/constantes';
+import type { StatusFiltro, StatusReserva } from '../../shared/constantes';
 import type { TipoEmail } from '../lib/notificador';
 import { conflito, invalido, naoEncontrado, proibido } from '../lib/erros';
 import { paraReservaDTO } from '../lib/dto';
@@ -16,13 +15,14 @@ export function criarServicoReservas(deps: DependenciasApp) {
   async function transicionar(
     usuario: Perfil, id: string, cfg: {
       novo: StatusReserva; permitidos: StatusReserva[]; exigirSalaAtiva: boolean; motivo?: string;
-      tipo: TipoEmail; apenasDonoOuAdmin?: boolean;
+      tipo: TipoEmail; apenasDonoOuAdmin?: boolean; apenasAdmin?: boolean;
     },
   ): Promise<ReservaDTO> {
     const agora = deps.agora();
     const detalhada = await deps.transacao(async (r) => {
-      const atual = await r.reservas.buscarPorId(id);
+      const atual = await r.reservas.buscarPorIdParaAtualizar(id);
       if (!atual) throw naoEncontrado('Reserva não encontrada.');
+      if (cfg.apenasAdmin && usuario.papel !== 'admin') throw proibido();
       if (cfg.apenasDonoOuAdmin && usuario.papel !== 'admin' && atual.usuarioId !== usuario.id) throw proibido();
       const nova = await r.reservas.transicionar({
         id, novo: cfg.novo, permitidos: cfg.permitidos, exigirSalaAtiva: cfg.exigirSalaAtiva,
@@ -40,9 +40,9 @@ export function criarServicoReservas(deps: DependenciasApp) {
   }
   return {
     aprovar: (usuario: Perfil, id: string) =>
-      transicionar(usuario, id, { novo: 'aprovada', permitidos: ['pendente'], exigirSalaAtiva: true, tipo: 'aprovada' }),
+      transicionar(usuario, id, { novo: 'aprovada', permitidos: ['pendente'], exigirSalaAtiva: true, tipo: 'aprovada', apenasAdmin: true }),
     recusar: (usuario: Perfil, id: string, motivo: string) =>
-      transicionar(usuario, id, { novo: 'recusada', permitidos: ['pendente'], exigirSalaAtiva: false, motivo, tipo: 'recusada' }),
+      transicionar(usuario, id, { novo: 'recusada', permitidos: ['pendente'], exigirSalaAtiva: false, motivo, tipo: 'recusada', apenasAdmin: true }),
     cancelar: (usuario: Perfil, id: string) =>
       transicionar(usuario, id, {
         novo: 'cancelada', permitidos: ['pendente', 'aprovada'], exigirSalaAtiva: false, tipo: 'cancelada', apenasDonoOuAdmin: true,

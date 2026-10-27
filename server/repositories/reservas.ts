@@ -12,6 +12,8 @@ export interface RepoReservas {
     finalidade: string;
   }): Promise<Reserva>;
   buscarPorId(id: string): Promise<Reserva | null>;
+  /** Dentro de transação: trava a linha (for update) para que o status lido seja o real. */
+  buscarPorIdParaAtualizar(id: string): Promise<Reserva | null>;
   transicionar(p: {
     id: string;
     novo: StatusReserva;
@@ -53,6 +55,12 @@ export function criarRepoReservas(db: Executor): RepoReservas {
       const [r] = await db<Reserva[]>`
         select id, sala_id, usuario_id, inicio, fim, status, finalidade, motivo_recusa, criado_em, atualizado_em
         from reservas where id = ${id}`;
+      return r ?? null;
+    },
+    async buscarPorIdParaAtualizar(id) {
+      const [r] = await db<Reserva[]>`
+        select id, sala_id, usuario_id, inicio, fim, status, finalidade, motivo_recusa, criado_em, atualizado_em
+        from reservas where id = ${id} for update`;
       return r ?? null;
     },
     async transicionar(p) {
