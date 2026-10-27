@@ -1,6 +1,7 @@
 import { criarRepos, criarSql, criarTransacao, type Repos, type Transacao } from './lib/db';
 import { criarAuthAdmin } from './lib/supabaseAdmin';
 import { notificadorNulo, type Notificador } from './lib/notificador';
+import { criarNotificador } from './lib/email';
 
 export interface AuthAdmin {
   criarUsuario(email: string, senha: string): Promise<string>;
@@ -26,6 +27,12 @@ export function dependenciasPadrao(): DependenciasApp {
   const supabaseUrl = process.env.SUPABASE_URL;
   const chave = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!supabaseUrl || !chave) throw new Error('SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY não configuradas');
+  const gmailUser = process.env.GMAIL_USER;
+  const gmailSenha = process.env.GMAIL_APP_PASSWORD;
+  const notificar =
+    gmailUser && gmailSenha
+      ? criarNotificador({ usuario: gmailUser, senha: gmailSenha, appUrl: process.env.APP_URL ?? '' })
+      : notificadorNulo;
   const sql = criarSql(url);
   const { authAdmin, verificarToken } = criarAuthAdmin(supabaseUrl, chave);
   return {
@@ -33,7 +40,7 @@ export function dependenciasPadrao(): DependenciasApp {
     repos: criarRepos(sql),
     transacao: criarTransacao(sql),
     authAdmin,
-    notificar: notificadorNulo,
+    notificar,
     agora: () => new Date(),
   };
 }
