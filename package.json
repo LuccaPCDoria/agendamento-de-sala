@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "predev": "node -e \"require('fs').rmSync('dist/_redirects',{force:true})\"",
     "dev": "netlify dev",
     "build": "tsc -p tsconfig.server.json --noEmit && vite build",
     "test": "vitest run",
