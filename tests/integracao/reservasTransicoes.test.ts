@@ -39,7 +39,7 @@ describe('transições de reservas', () => {
     const c = await request(app()).post(`/api/reservas/${id}/cancelar`).set(auth(prof.token));
     expect(c.status).toBe(200);
     expect(c.body.status).toBe('cancelada');
-    const h = await sqlTeste`select status_anterior, status_novo from historico_reservas where reserva_id = ${id} order by alterado_em, id`;
+    const h = await sqlTeste`select status_anterior, status_novo from historico_reservas where reserva_id = ${id} order by id`;
     expect(h.map((x) => [x.statusAnterior, x.statusNovo])).toEqual([['pendente', 'aprovada'], ['aprovada', 'cancelada']]);
   });
   it('recusar grava motivo; motivo vazio → 400', async () => {
@@ -114,7 +114,7 @@ describe('transições de reservas', () => {
     const servB = criarServicoReservas({ ...depsIntegracao(), transacao: criarTransacao(b) });
     await Promise.allSettled([servA.aprovar(adm.perfil, id), servB.cancelar(prof.perfil, id)]);
     const h = await sqlTeste<{ statusAnterior: string | null; statusNovo: string }[]>`
-      select status_anterior, status_novo from historico_reservas where reserva_id = ${id} order by alterado_em, id`;
+      select status_anterior, status_novo from historico_reservas where reserva_id = ${id} order by id`;
     expect(h.length).toBeGreaterThanOrEqual(2);
     expect(h[0]).toMatchObject({ statusAnterior: null, statusNovo: 'pendente' });
     for (let i = 1; i < h.length; i++) expect(h[i].statusAnterior).toBe(h[i - 1].statusNovo);
