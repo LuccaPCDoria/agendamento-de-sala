@@ -197,7 +197,7 @@ Cada transição segue esta ordem, dentro de uma transação:
 ### E-mails (RF12)
 - O solicitante recebe e-mail em **toda** mudança de status: criação ("Solicitação recebida" ou "Reserva confirmada" quando criada por admin), aprovação, recusa (com motivo) e cancelamento (por ele próprio, pela direção ou automático por inativação).
 - Ordem: **commit → envio dos e-mails com `await` → resposta HTTP.** A função serverless congela após responder, então nada é enviado depois da resposta.
-- **Prazo global de 5 s** para todo o envio (`Promise.race` contra um timer), além dos timeouts de conexão do Nodemailer. Transporter com `pool: true` e `maxConnections: 2`.
+- **Prazo global de 5 s** para todo o envio (`Promise.race` contra um timer), além dos timeouts de conexão do Nodemailer. O transporter (`pool: true`, `maxConnections: 2`) é criado **a cada requisição** que envia e-mail e fechado com `transporter.close()` ao final — não é reaproveitado entre invocações, porque o Gmail derruba conexões ociosas enquanto a função está congelada.
 - **Agrupamento:** na inativação de sala ou usuário, cada solicitante recebe **um único e-mail** listando todas as suas reservas canceladas.
 - Falha ou estouro de prazo no envio é registrado em log e **não** desfaz a operação nem gera erro para o usuário.
 - O remetente é o próprio `GMAIL_USER`. O e-mail inclui sala, data, horário, novo status e o link `APP_URL`. Textos livres (`finalidade`, `motivo_recusa`, nomes) são **escapados** no template HTML.
@@ -247,7 +247,7 @@ Todas as rotas exigem token válido e usuário ativo. Respostas em JSON.
 - Filtros opcionais: `salaId`, `tipo`, `status` (lista separada por vírgula, ex.: `status=recusada,cancelada`), `minhas=true`.
 - Valores de `status` no filtro: `pendente` = pendente com início no futuro; `expirada` = pendente com início no passado; `aprovada`, `recusada`, `cancelada` = o próprio status.
 - **Professor sem `minhas`** (calendário): somente `pendente`, `expirada` e `aprovada`, de todos os usuários. Pedir outro valor de `status` → 400.
-- **Professor com `minhas=true`:** todas as próprias reservas, qualquer status.
+- **Qualquer papel com `minhas=true`:** todas as próprias reservas, qualquer status (o filtro `status`, se enviado, restringe).
 - **Admin:** sem filtro `status`, retorna `pendente`, `expirada` e `aprovada`; com filtro, qualquer combinação.
 - Cada item traz sala (nome, tipo), solicitante (nome), horário, status, finalidade, motivo de recusa e `expirada` (booleano derivado).
 
@@ -351,7 +351,7 @@ Conforme o RNF007, a contagem parte da **visualização da sala no calendário**
    - Inativação de sala e de usuário: cancela só as futuras `pendente`/`aprovada`, grava histórico com `alterado_por` = admin, tudo numa transação.
    - Visibilidade em `GET /api/reservas`: professor não vê recusadas/canceladas de outros; `GET /api/reservas/pendentes` traz pendentes distantes (ex.: daqui a 3 meses).
    - HTTP (supertest em `server/app.ts`): conflito → 409 com a mensagem em português; professor em rota de admin → 403; cancelar reserva alheia → 403; sem token → 401. Os tokens vêm de usuários de teste criados com a service role no projeto de testes e autenticados com `signInWithPassword`.
-3. **Roteiro de teste manual** (`docs/roteiro-de-testes.md`): login, reservar, conflito, aprovar, recusar, cancelar, e-mails recebidos, inativar usuário e sala (reservas canceladas e um único e-mail por pessoa), tentar logar inativo, sessão expirada, celular.
+3. **Roteiro de teste manual** (`docs/roteiro-de-testes.md`): login, reservar, conflito, aprovar, recusar, cancelar, e-mails recebidos, inativar usuário e sala (reservas canceladas e um único e-mail por pessoa), tentar logar inativo, sessão expirada, celular, e-mail enviado novamente após ~10 minutos com a função ociosa.
 4. **Desempenho (RNF001):** medir o tempo de criação de reserva no ambiente publicado, **incluindo o envio do e-mail**, com e sem cold start, e registrar no roteiro (ver regra de fallback em §6 E-mails).
 
 ## 11. Rastreabilidade dos requisitos
