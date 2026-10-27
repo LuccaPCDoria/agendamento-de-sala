@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import type { Perfil } from '../../shared/tipos';
 import { api, ErroApi } from '../lib/api';
 import { supabase } from '../lib/supabase';
+import { registrarAtividade } from './inatividade';
 import { traduzirErroLogin } from './traduzirErroLogin';
 
 interface AuthCtx {
@@ -10,6 +11,7 @@ interface AuthCtx {
   erroCarga: string | null;
   entrar(email: string, senha: string): Promise<string | null>;
   sair(): Promise<void>;
+  expirarSessao(): Promise<void>;
   recarregar(): Promise<void>;
 }
 
@@ -68,6 +70,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setPerfil(await api<Perfil>('/me'));
       setErroCarga(null);
+      try {
+        registrarAtividade(window.localStorage, Date.now());
+      } catch {
+        /* localStorage indisponível: sem logout por inatividade */
+      }
       return null;
     } catch (e) {
       if (recusado(e)) await supabase.auth.signOut({ scope: 'local' });
@@ -80,9 +87,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setPerfil(null);
   }, []);
 
+  const expirarSessao = useCallback(async () => {
+    try {
+      await supabase.auth.signOut({ scope: 'local' });
+    } finally {
+      setPerfil(null);
+    }
+  }, []);
+
   const valor = useMemo(
-    () => ({ perfil, carregando, erroCarga, entrar, sair, recarregar }),
-    [perfil, carregando, erroCarga, entrar, sair, recarregar],
+    () => ({ perfil, carregando, erroCarga, entrar, sair, expirarSessao, recarregar }),
+    [perfil, carregando, erroCarga, entrar, sair, expirarSessao, recarregar],
   );
   return <Contexto.Provider value={valor}>{children}</Contexto.Provider>;
 }

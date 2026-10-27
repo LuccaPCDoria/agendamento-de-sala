@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
 import { itensDoMenu } from './menu';
+import VigiaInatividade from './VigiaInatividade';
 
 export default function Layout() {
   const { perfil, sair } = useAuth();
@@ -13,6 +14,7 @@ export default function Layout() {
 
   return (
     <div className="min-h-screen bg-slate-50 md:flex">
+      <VigiaInatividade />
       <header className="flex items-center justify-between border-b bg-white px-4 py-3 md:hidden">
         <button
           type="button"
