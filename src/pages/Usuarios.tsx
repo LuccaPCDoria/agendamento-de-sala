@@ -3,8 +3,8 @@ import type { DadosCriarUsuario } from '../../shared/esquemas';
 import type { Perfil } from '../../shared/tipos';
 import FormUsuario from '../components/FormUsuario';
 import Modal from '../components/Modal';
-import { useCriarUsuario, useEditarUsuario, useUsuarios } from '../consultas/usuarios';
-import { ROTULO_PAPEL } from '../rotulos';
+import { useCriarUsuario, useEditarUsuario, useInativarUsuario, useReativarUsuario, useUsuarios } from '../consultas/usuarios';
+import { CONFIRMA_INATIVAR, ROTULO_PAPEL } from '../rotulos';
 
 export default function Usuarios() {
   const { data, isLoading, error } = useUsuarios();
@@ -12,6 +12,17 @@ export default function Usuarios() {
   const editar = useEditarUsuario();
   const [aberto, setAberto] = useState(false);
   const [editando, setEditando] = useState<Perfil | null>(null);
+  const inativar = useInativarUsuario();
+  const reativar = useReativarUsuario();
+  const erroAcao = inativar.error?.message ?? reativar.error?.message ?? null;
+
+  function alternar(u: Perfil) {
+    inativar.reset();
+    reativar.reset();
+    if (u.ativo) {
+      if (window.confirm(CONFIRMA_INATIVAR)) inativar.mutate(u.id);
+    } else reativar.mutate(u.id);
+  }
   const mut = editando ? editar : criar;
 
   function fechar() {
@@ -30,6 +41,7 @@ export default function Usuarios() {
       </div>
       {isLoading && <p>Carregando...</p>}
       {error && <p role="alert" className="text-red-600">{error.message}</p>}
+      {erroAcao && <p role="alert" className="text-red-600">{erroAcao}</p>}
       {data && (
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
@@ -46,6 +58,10 @@ export default function Usuarios() {
                   <td className="p-2">{u.ativo ? 'Ativo' : 'Inativo'}</td>
                   <td className="p-2">
                     <button type="button" onClick={() => setEditando(u)} className="text-blue-600">Editar</button>
+                    <button type="button" disabled={inativar.isPending || reativar.isPending}
+                      onClick={() => alternar(u)} className="ml-3 text-red-600 disabled:opacity-50">
+                      {u.ativo ? 'Inativar' : 'Reativar'}
+                    </button>
                   </td>
                 </tr>
               ))}

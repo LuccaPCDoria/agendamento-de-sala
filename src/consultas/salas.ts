@@ -27,3 +27,19 @@ export function useEditarSala() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['salas'] }),
   });
 }
+
+function alternarSala(acao: 'inativar' | 'reativar') {
+  return function useAlternar() {
+    const qc = useQueryClient();
+    return useMutation({
+      mutationFn: (id: string) => api<Sala>(`/salas/${id}/${acao}`, { metodo: 'POST' }),
+      onSuccess: () => {
+        void qc.invalidateQueries({ queryKey: ['reservas'] });
+        void qc.invalidateQueries({ queryKey: ['pendentes'] });
+        return qc.invalidateQueries({ queryKey: ['salas'] });
+      },
+    });
+  };
+}
+export const useInativarSala = alternarSala('inativar');
+export const useReativarSala = alternarSala('reativar');

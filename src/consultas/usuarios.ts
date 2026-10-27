@@ -23,3 +23,19 @@ export function useEditarUsuario() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['usuarios'] }),
   });
 }
+
+function alternarUsuario(acao: 'inativar' | 'reativar') {
+  return function useAlternar() {
+    const qc = useQueryClient();
+    return useMutation({
+      mutationFn: (id: string) => api<Perfil>(`/usuarios/${id}/${acao}`, { metodo: 'POST' }),
+      onSuccess: () => {
+        void qc.invalidateQueries({ queryKey: ['reservas'] });
+        void qc.invalidateQueries({ queryKey: ['pendentes'] });
+        return qc.invalidateQueries({ queryKey: ['usuarios'] });
+      },
+    });
+  };
+}
+export const useInativarUsuario = alternarUsuario('inativar');
+export const useReativarUsuario = alternarUsuario('reativar');

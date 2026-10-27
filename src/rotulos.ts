@@ -10,3 +10,14 @@ export const ROTULO_PAPEL: Record<Papel, string> = {
   usuario: 'Professor',
   admin: 'Direção',
 };
+
+export const ROTULO_STATUS: Record<string, string> = {
+  pendente: 'Pendente',
+  aprovada: 'Aprovada',
+  recusada: 'Recusada',
+  cancelada: 'Cancelada',
+  expirada: 'Expirada',
+};
+
+export const CONFIRMA_INATIVAR =
+  'As reservas futuras serão canceladas e os solicitantes avisados por e-mail. Continuar?';

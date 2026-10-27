@@ -8,7 +8,10 @@ import interactionPlugin from '@fullcalendar/interaction';
 import ptBr from '@fullcalendar/core/locales/pt-br';
 import { DIAS_FUNCIONAMENTO, HORA_ABERTURA, HORA_FECHAMENTO } from '../../shared/constantes';
 import { reservaParaEvento } from '../calendario/eventos';
+import ModalDetalhes from '../calendario/ModalDetalhes';
 import ModalNovaReserva from '../calendario/ModalNovaReserva';
+import type { ReservaDTO } from '../../shared/tipos';
+import { useAuth } from '../auth/AuthProvider';
 import { buscarReservas } from '../consultas/reservas';
 import { useSalas } from '../consultas/salas';
 
@@ -19,6 +22,8 @@ export default function Calendario() {
   const { data: salas = [] } = useSalas();
   const [salaId, setSalaId] = useState('');
   const [selecao, setSelecao] = useState<Selecao | null>(null);
+  const { perfil } = useAuth();
+  const [detalhe, setDetalhe] = useState<ReservaDTO | null>(null);
   const salaIdRef = useRef(salaId);
 
   const visaoInicial = window.matchMedia?.('(max-width: 640px)').matches ? 'listWeek' : 'timeGridWeek';
@@ -43,6 +48,11 @@ export default function Calendario() {
     const api = calendarRef.current?.getApi();
     api?.unselect();
     api?.refetchEvents();
+  }
+
+  function fecharDetalhe() {
+    setDetalhe(null);
+    calendarRef.current?.getApi().refetchEvents();
   }
 
   return (
@@ -80,6 +90,7 @@ export default function Calendario() {
         dateClick={(info) => {
           if (info.view.type === 'dayGridMonth') info.view.calendar.changeView('timeGridDay', info.date);
         }}
+        eventClick={(info) => setDetalhe(info.event.extendedProps.reserva as ReservaDTO)}
         select={(info) => {
           if (info.view.type === 'dayGridMonth') {
             info.view.calendar.unselect();
@@ -88,6 +99,8 @@ export default function Calendario() {
           setSelecao({ inicio: info.start, fim: info.end });
         }}
       />
+
+      {detalhe && perfil && <ModalDetalhes reserva={detalhe} perfil={perfil} aoFechar={fecharDetalhe} />}
 
       {selecao && (
         <ModalNovaReserva

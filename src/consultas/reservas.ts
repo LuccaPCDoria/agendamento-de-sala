@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { StatusFiltro, TipoSala } from '../../shared/constantes';
 import type { DadosCriarReserva } from '../../shared/esquemas';
 import type { ReservaDTO } from '../../shared/tipos';
@@ -34,5 +34,46 @@ export function useCriarReserva() {
       void qc.invalidateQueries({ queryKey: ['reservas'] });
       void qc.invalidateQueries({ queryKey: ['pendentes'] });
     },
+  });
+}
+
+function invalidar(qc: ReturnType<typeof useQueryClient>) {
+  void qc.invalidateQueries({ queryKey: ['reservas'] });
+  void qc.invalidateQueries({ queryKey: ['pendentes'] });
+}
+
+export function usePendentes() {
+  return useQuery({ queryKey: ['pendentes'], queryFn: () => api<ReservaDTO[]>('/reservas/pendentes') });
+}
+
+export function useReservasPeriodo(inicio: string, fim: string, minhas: boolean) {
+  return useQuery({
+    queryKey: ['reservas', { inicio, fim, minhas }],
+    queryFn: () => buscarReservas({ inicio, fim, minhas }),
+  });
+}
+
+export function useAprovar() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api<ReservaDTO>(`/reservas/${id}/aprovar`, { metodo: 'POST' }),
+    onSuccess: () => invalidar(qc),
+  });
+}
+
+export function useRecusar() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, motivo }: { id: string; motivo: string }) =>
+      api<ReservaDTO>(`/reservas/${id}/recusar`, { metodo: 'POST', corpo: { motivo } }),
+    onSuccess: () => invalidar(qc),
+  });
+}
+
+export function useCancelar() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api<ReservaDTO>(`/reservas/${id}/cancelar`, { metodo: 'POST' }),
+    onSuccess: () => invalidar(qc),
   });
 }

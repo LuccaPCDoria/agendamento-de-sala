@@ -11,6 +11,10 @@ vi.mock('../lib/api', async () => {
   return { ...real, api: apiMock };
 });
 
+vi.mock('../auth/AuthProvider', () => ({
+  useAuth: () => ({ perfil: { id: 'u1', nome: 'Ana', email: 'a@x', papel: 'usuario', ativo: true } }),
+}));
+
 beforeEach(() => {
   apiMock.mockReset();
   apiMock.mockImplementation((caminho: string) => Promise.resolve(caminho === '/salas' ? [] : []));
