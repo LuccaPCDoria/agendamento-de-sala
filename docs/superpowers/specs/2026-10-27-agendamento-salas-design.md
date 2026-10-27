@@ -33,7 +33,7 @@
 |---|---|---|
 | Interface | React + Vite + TypeScript, Tailwind CSS, React Router, TanStack Query, FullCalendar (plugins gratuitos: dayGrid, timeGrid, list, interaction), jsPDF + jspdf-autotable | Netlify |
 | API / regras | Node.js + Express + TypeScript, executado como Netlify Function **v1** (`export const handler`) via `serverless-http` | Netlify (mesmo deploy) |
-| Validação | Zod — esquemas em `shared/`, usados pelo front e pela API | — |
+| Validação | Zod 3 (versão fixada) — esquemas em `shared/`, usados pelo front e pela API | — |
 | Banco | PostgreSQL do Supabase, acessado pela API com `postgres.js` (SQL direto, com transações) | Supabase |
 | Autenticação | Supabase Auth (senhas com bcrypt) | Supabase |
 | E-mail | Nodemailer + Gmail (senha de app) | — |
@@ -161,48 +161,60 @@ ALTER TABLE reservas ADD CONSTRAINT reservas_sem_conflito
 
 ### Constantes (em `shared/`)
 - Horário de funcionamento: **07:00 às 23:00** (America/Sao_Paulo).
+- Dias de funcionamento: **segunda a sábado** (domingo bloqueado).
 - Duração mínima: 15 minutos.
 
 ### Criar reserva
-- Sala deve existir e estar ativa.
-- `inicio` no futuro; `fim > inicio`; início e fim no **mesmo dia** e dentro do horário de funcionamento (`inicio ≥ 07:00`, `fim ≤ 23:00`); duração ≥ 15 minutos; `finalidade` obrigatória.
+- `inicio` no futuro; `fim > inicio`; início e fim no **mesmo dia**, de segunda a sábado, dentro do horário de funcionamento (`inicio ≥ 07:00`, `fim ≤ 23:00`); duração ≥ 15 minutos; `finalidade` obrigatória (até 200 caracteres).
 - Criada por professor → `pendente`. Criada por admin → `aprovada`.
+- Dentro da transação, antes do INSERT: `SELECT ... FROM salas WHERE id = $1 AND ativa FOR SHARE` e `SELECT ... FROM perfis WHERE id = $2 AND ativo FOR SHARE`. Sem linha → sala inativa/inexistente (400) ou usuário inativo (403). O `FOR SHARE` impede que uma inativação simultânea deixe uma reserva órfã.
 - Grava a reserva e a linha de histórico (`null → status inicial`) na **mesma transação**.
 
 ### Transições de status
-Cada transição é feita por **um único UPDATE condicional** dentro da transação, para que duas ações simultâneas (ex.: admin aprova enquanto o dono cancela) nunca tenham sucesso juntas:
+Cada transição segue esta ordem, dentro de uma transação:
 
-```sql
-UPDATE reservas SET status = $novo, motivo_recusa = $motivo, atualizado_em = now()
- WHERE id = $id AND status = ANY($permitidos) AND inicio > now()
-RETURNING *;
-```
-- 1 linha → grava o histórico na mesma transação.
-- 0 linhas e a reserva existe → 409 ("Esta reserva não pode mais ser alterada."); não existe → 404.
+1. `SELECT` da reserva pelo id → não existe: **404**.
+2. Permissão: se a ação exige admin e o usuário não é admin, ou se é cancelamento e o usuário não é admin nem dono → **403**.
+3. **Um único UPDATE condicional**, para que duas ações simultâneas (ex.: admin aprova enquanto o dono cancela) nunca tenham sucesso juntas:
+   ```sql
+   UPDATE reservas SET status = $novo, motivo_recusa = $motivo, atualizado_em = now()
+    WHERE id = $id AND status = ANY($permitidos) AND inicio > now()
+      [AND EXISTS (SELECT 1 FROM salas WHERE id = reservas.sala_id AND ativa)]  -- só no Aprovar
+   RETURNING *;
+   ```
+   0 linhas → **409** ("Esta reserva não pode mais ser alterada."). 1 linha → grava o histórico na mesma transação.
 
 | Ação | Quem | Status permitidos | Condições extras | Resultado |
 |---|---|---|---|---|
-| Aprovar | admin | `pendente` | início no futuro; sala ativa (senão 409 "Sala inativa") | `aprovada` |
+| Aprovar | admin | `pendente` | início no futuro; sala ativa | `aprovada` |
 | Recusar | admin | `pendente` | `motivo_recusa` obrigatório | `recusada` |
 | Cancelar | dono ou admin | `pendente`, `aprovada` | início no futuro | `cancelada` |
 
-- **Pendente expirada:** uma reserva `pendente` cujo início já passou não muda de status no banco, mas é exibida como **"Expirada"** na interface e no PDF, e não aparece na tela de Aprovações.
+- **Pendente expirada:** uma reserva `pendente` cujo início já passou não muda de status no banco, mas é exibida como **"Expirada"** (cinza no calendário, rótulo na lista e no PDF) e não aparece na tela de Aprovações. Comportamento aceito e documentado: ela continua ocupando o restante do seu intervalo na constraint, o que só afeta horários já em andamento.
 
 ### E-mails (RF12)
 - O solicitante recebe e-mail em **toda** mudança de status: criação ("Solicitação recebida" ou "Reserva confirmada" quando criada por admin), aprovação, recusa (com motivo) e cancelamento (por ele próprio, pela direção ou automático por inativação).
 - Ordem: **commit → envio dos e-mails com `await` → resposta HTTP.** A função serverless congela após responder, então nada é enviado depois da resposta.
-- O transporter tem timeout de 5 s; vários e-mails (inativação) são enviados em paralelo com `Promise.allSettled`. Falha de envio é registrada em log e **não** desfaz a operação nem gera erro para o usuário.
-- O remetente é o próprio `GMAIL_USER`. O e-mail inclui sala, data, horário, novo status e o link `APP_URL`.
+- **Prazo global de 5 s** para todo o envio (`Promise.race` contra um timer), além dos timeouts de conexão do Nodemailer. Transporter com `pool: true` e `maxConnections: 2`.
+- **Agrupamento:** na inativação de sala ou usuário, cada solicitante recebe **um único e-mail** listando todas as suas reservas canceladas.
+- Falha ou estouro de prazo no envio é registrado em log e **não** desfaz a operação nem gera erro para o usuário.
+- O remetente é o próprio `GMAIL_USER`. O e-mail inclui sala, data, horário, novo status e o link `APP_URL`. Textos livres (`finalidade`, `motivo_recusa`, nomes) são **escapados** no template HTML.
+- Destinatário: sempre `perfis.email` (fonte da verdade para notificações).
+- **RNF001:** o tempo de criação de reserva é medido com o e-mail incluído (§10). Se passar de 2 s, o e-mail de criação ("Solicitação recebida") é removido; os demais permanecem.
 
 ### Salas
-- Nome único (sem diferenciar maiúsculas).
+- Nome único (sem diferenciar maiúsculas); duplicidade (`23505`) → 409 "Já existe uma sala com este nome."
 - **Inativar sala:** na mesma transação, marca `ativa = false` e cancela automaticamente as reservas futuras `pendente`/`aprovada` dessa sala (histórico com `alterado_por` = admin); depois envia os e-mails aos solicitantes. Reativar não restaura reservas canceladas.
 
 ### Usuários
-- **Criar** (admin): cria a conta no Supabase Auth (`auth.admin.createUser` com `email_confirm: true`, senha inicial com mínimo de 8 caracteres) e insere em `perfis`. Se a inserção falhar, a conta do Auth é excluída (compensação). E-mail já existente → 409.
-- **Editar** (admin): nome, e-mail, papel e, opcionalmente, nova senha (mínimo 8 caracteres). Ordem: atualiza primeiro o Auth (`auth.admin.updateUserById` com `email_confirm: true` quando o e-mail muda), depois `perfis`; se `perfis` falhar, reverte o e-mail no Auth. E-mail duplicado → 409.
-- **Inativar** (admin): na mesma transação, `ativo = false` e cancelamento automático das reservas futuras `pendente`/`aprovada` do usuário (histórico com `alterado_por` = admin); depois bloqueia no Auth (`ban_duration: '876000h'`) e envia os e-mails. **Reativar:** `ativo = true` e `ban_duration: 'none'`. Dados e histórico são mantidos (RF15).
+- E-mails são normalizados com `trim().toLowerCase()` no Zod antes de comparar e gravar.
+- **Regra geral com o Auth:** as chamadas ao Supabase Auth são feitas **dentro** da transação do banco, depois dos comandos SQL e **antes** do commit. Se o Auth falhar → rollback e erro para o admin, que pode repetir (ban/unban são idempotentes). Falha no commit depois de o Auth já ter sido alterado é rara e fica registrada em log.
+- **Criar** (admin): na transação, `INSERT` em `perfis` precisa do id do Auth, então a ordem é: `auth.admin.createUser` (`email_confirm: true`, senha inicial com mínimo de 8 caracteres) → `INSERT` em `perfis` → commit. Se o INSERT ou o commit falhar, a conta do Auth é excluída (compensação).
+- **Editar** (admin): nome, e-mail, papel e, opcionalmente, nova senha (mínimo 8 caracteres). Ordem: `UPDATE perfis` → `auth.admin.updateUserById` (e-mail com `email_confirm: true` e/ou senha) → commit.
+- **E-mail duplicado** chega como `email_exists` do Auth ou `23505` do índice `lower(email)`; ambos viram **409** "Já existe um usuário com este e-mail."
+- **Inativar** (admin): na transação, `ativo = false` + cancelamento das reservas futuras `pendente`/`aprovada` do usuário (histórico com `alterado_por` = admin) + bloqueio no Auth (`ban_duration: '876000h'`) → commit → e-mails. **Reativar:** `ativo = true` + `ban_duration: 'none'` → commit. Dados e histórico são mantidos (RF15).
 - Um admin não pode inativar a si mesmo nem remover o próprio papel de admin.
+- **E-mail de login × `perfis.email`:** o usuário consegue trocar o próprio e-mail de login pelo navegador (`supabase.auth.updateUser`). A opção "Secure email change" do Supabase fica ligada, `perfis.email` continua sendo a fonte da verdade para notificações, e o middleware `autenticar` registra em log quando os dois forem diferentes.
 
 ## 7. API
 
@@ -220,20 +232,24 @@ Todas as rotas exigem token válido e usuário ativo. Respostas em JSON.
 | `PATCH /api/salas/:id` | admin | Editar dados |
 | `POST /api/salas/:id/inativar` · `/reativar` | admin | Inativar (cancela reservas futuras) / reativar |
 | `GET /api/reservas` | logado | Ver regras abaixo |
+| `GET /api/reservas/pendentes` | admin | Todas as `pendente` com início no futuro, sem janela de datas, ordenadas por início (tela Aprovações) |
 | `POST /api/reservas` | logado | Criar reserva |
 | `POST /api/reservas/:id/aprovar` | admin | Aprovar |
 | `POST /api/reservas/:id/recusar` | admin | Recusar (`{ motivo }`) |
 | `POST /api/reservas/:id/cancelar` | dono ou admin | Cancelar |
-| `GET /api/reservas/:id/historico` | dono ou admin | Mudanças de status com **nome** de quem alterou e data/hora |
+| `GET /api/reservas/:id/historico` | dono ou admin | Mudanças de status com **nome** de quem alterou e data/hora (404 se não existe, 403 se não é dono nem admin) |
 | `GET /api/relatorios/mensal?mes=AAAA-MM` | admin | Reservas do mês (todas as situações, pendentes vencidas marcadas como expiradas), com totais por status |
 
 ### `GET /api/reservas`
-- Parâmetros `inicio` e `fim` **obrigatórios**, intervalo máximo de 62 dias. Filtros opcionais: `salaId`, `tipo`, `status`, `minhas=true`.
+- Parâmetros `inicio` e `fim` **obrigatórios**, intervalo máximo de 62 dias. Retorna reservas que **se sobrepõem** à janela (`reservas.inicio < :fim AND reservas.fim > :inicio`), ordenadas por início.
+- Filtros opcionais: `salaId`, `tipo`, `status` (lista separada por vírgula, ex.: `status=recusada,cancelada`; o valor `expirada` seleciona pendentes cujo início já passou), `minhas=true`.
 - **Professor sem `minhas`** (calendário): somente `pendente`/`aprovada`, de todos os usuários — o filtro `status` só pode restringir dentro desse conjunto.
 - **Professor com `minhas=true`:** todas as próprias reservas, qualquer status.
-- **Admin:** por padrão `pendente`/`aprovada`; pode pedir qualquer status pelo filtro.
-- Cada item traz sala (nome, tipo), solicitante (nome), horário, status, finalidade e `expirada` (booleano derivado).
-- Limites de mês do relatório calculados em America/Sao_Paulo (`make_timestamptz(ano, mes, 1, 0, 0, 0, 'America/Sao_Paulo')` até o mês seguinte).
+- **Admin:** sem filtro `status`, retorna `pendente`/`aprovada`; com filtro, qualquer combinação.
+- Cada item traz sala (nome, tipo), solicitante (nome), horário, status, finalidade, motivo de recusa e `expirada` (booleano derivado).
+
+### `GET /api/relatorios/mensal`
+- Limites do mês calculados em `lib/datas.ts` no fuso America/Sao_Paulo (início do mês até início do mês seguinte, tratando dezembro → janeiro do ano seguinte) e passados como parâmetros para a consulta.
 
 ### Middlewares
 - `autenticar`: valida o JWT com o Supabase (`auth.getUser(token)`), carrega o perfil, rejeita usuário sem perfil ou inativo.
@@ -248,7 +264,8 @@ Todas as rotas exigem token válido e usuário ativo. Respostas em JSON.
 | Registro não encontrado | 404 | "Reserva não encontrada." |
 | Dados inválidos (Zod / regra) | 400 | "O horário de término deve ser depois do início." |
 | Conflito de horário (`23P01`) | 409 | "Esta sala já está reservada nesse horário." |
-| Transição de status inválida / sala inativa / e-mail duplicado | 409 | "Esta reserva não pode mais ser alterada." |
+| Transição de status inválida (inclui sala inativa no Aprovar) | 409 | "Esta reserva não pode mais ser alterada." |
+| E-mail ou nome de sala duplicado (`email_exists` / `23505`) | 409 | "Já existe um usuário com este e-mail." |
 | Erro inesperado | 500 | "Erro interno. Tente novamente." (detalhes só no log) |
 
 ## 8. Interface
@@ -257,9 +274,9 @@ Todas as rotas exigem token válido e usuário ativo. Respostas em JSON.
 | Rota | Perfis | Conteúdo |
 |---|---|---|
 | `/login` | público | E-mail e senha |
-| `/` Calendário | todos | FullCalendar com visões dia/semana/mês; filtros por sala, tipo e status; eventos 🟨 pendente / 🟩 aprovada com sala, horário, solicitante e finalidade; botão **"Nova reserva"** |
+| `/` Calendário | todos | FullCalendar com visões dia/semana/mês; filtros por sala, tipo e status; eventos 🟨 pendente / 🟩 aprovada / ⬜ expirada com sala, horário, solicitante e finalidade; botão **"Nova reserva"**. **Clique em um evento** abre o modal de detalhes: dados da reserva, histórico de mudanças, botão cancelar (dono ou admin) e aprovar/recusar (admin, se pendente e não expirada) |
 | `/reservas` Histórico de reservas | todos | Professor: as próprias; admin: todas. Filtros por período, sala e status. Mostra status (incluindo "Expirada"), motivo de recusa, botão cancelar e o histórico de mudanças de cada reserva (RF08, RF13) |
-| `/aprovacoes` | admin | Pendentes não expiradas, com aprovar / recusar (motivo obrigatório) |
+| `/aprovacoes` | admin | Pendentes não expiradas (`GET /api/reservas/pendentes`), com aprovar / recusar (motivo obrigatório) |
 | `/salas` | admin | Listagem, cadastro, edição, inativar/reativar (com aviso de que reservas futuras serão canceladas) |
 | `/usuarios` | admin | Listagem, cadastro, edição (inclui nova senha), inativar/reativar (com o mesmo aviso) |
 | `/relatorios` | admin | Seleção de mês e download do PDF (jsPDF + jspdf-autotable) |
@@ -276,13 +293,13 @@ Conforme o RNF007, a contagem parte da **visualização da sala no calendário**
 - Sem filtro de sala, o modal pede também a sala.
 - Na **visão de mês**, clicar em um dia abre a visão de dia daquela data.
 - O botão **"Nova reserva"** (todas as visões, essencial no celular) abre o mesmo modal com data e horário editáveis.
-- Seleções fora do horário de funcionamento são bloqueadas no calendário (`businessHours`/`selectConstraint` 07:00–23:00).
+- A grade do calendário mostra só 07:00–23:00 (`slotMinTime`/`slotMaxTime`), e seleções fora de segunda a sábado e desse horário são bloqueadas (`businessHours` com `daysOfWeek: [1,2,3,4,5,6]` + `selectConstraint: 'businessHours'`). As constantes vêm de `shared/`, as mesmas usadas pela API.
 - Em caso de conflito (409), o modal permanece aberto com a mensagem de erro.
 
 ### Sessão e login
 - **Erros de login** do Supabase traduzidos: credenciais inválidas → "E-mail ou senha incorretos."; usuário bloqueado → "Usuário inativo. Procure a direção."
 - Se `/api/me` responder 401/403, o front faz logout local e volta para `/login`.
-- **Inatividade (RNF004):** o horário da última interação (mouse, teclado, toque, com throttle) é salvo em `localStorage` (compartilhado entre abas). Ao abrir o app e a cada minuto, se passaram 30 minutos, executa `signOut({ scope: 'local' })` e redireciona para `/login` com "Sessão expirada". Isso cobre também o caso de fechar e reabrir o navegador.
+- **Inatividade (RNF004):** o horário da última interação (mouse, teclado, toque, com throttle) é salvo em `localStorage` (compartilhado entre abas) e também gravado no momento do login bem-sucedido. Ao abrir o app e a cada minuto, se passaram 30 minutos, executa `signOut({ scope: 'local' })` e redireciona para `/login` com "Sessão expirada". Isso cobre também o caso de fechar e reabrir o navegador.
 
 ### Outros comportamentos
 - **Responsivo (RNF006):** em telas estreitas o calendário abre na visão de lista; novas reservas são feitas pelo botão "Nova reserva".
@@ -296,7 +313,7 @@ Conforme o RNF007, a contagem parte da **visualização da sala no calendário**
 - Migrações SQL em `supabase/migrations/`, aplicadas com a Supabase CLI (`supabase db push`).
 
 ### Configuração do Supabase
-- Authentication → Settings: **desativar "Allow new users to sign up"**.
+- Authentication → Settings: **desativar "Allow new users to sign up"** e manter **"Secure email change"** ligado.
 - **Primeiro admin** (documentado em `docs/primeiro-admin.md`):
   1. Painel → Authentication → Add user, com "Auto Confirm User".
   2. SQL Editor: `insert into perfis (id, nome, email, papel) select id, 'Direção', email, 'admin' from auth.users where email = '<email>';`
@@ -318,14 +335,17 @@ Conforme o RNF007, a contagem parte da **visualização da sala no calendário**
 
 ## 10. Testes
 
-1. **Unitários (Vitest, sem banco):** serviços com repositórios e `transacao` falsos (contrato em §4) — reserva no passado, fim antes do início, dias diferentes, fora de 07:00–23:00, menos de 15 min, sala inativa, reserva de admin nasce aprovada, transições permitidas e proibidas, permissões de cancelamento, compensação na criação/edição de usuário, e-mail enviado em cada transição e falha de e-mail não quebrando a operação, conversão de fuso em `lib/datas.ts` (ex.: reserva às 22h em Brasília = 01h UTC do dia seguinte).
+1. **Unitários (Vitest, sem banco):** serviços com repositórios e `transacao` falsos (contrato em §4) — reserva no passado, fim antes do início, dias diferentes, domingo, fora de 07:00–23:00, menos de 15 min, reserva de admin nasce aprovada, ordem 404 → 403 → 409 nas transições, permissões de cancelamento, compensação na criação de usuário, rollback quando o Auth falha, e-mail enviado em cada transição, agrupamento de e-mails na inativação, falha/estouro de prazo do e-mail não quebrando a operação, escape de HTML no template, conversão de fuso e limites de mês em `lib/datas.ts` (ex.: reserva às 22h em Brasília = 01h UTC do dia seguinte; relatório de dezembro).
 2. **Integração (Vitest + projeto Supabase de testes separado):**
    - Repositórios: reservas sobrepostas → erro `23P01`; reservas encostadas (10h–11h e 11h–12h) → ambas aceitas; reserva cancelada libera o horário.
-   - **Duas criações simultâneas para o mesmo horário → exatamente uma aceita** (demonstração de RF007/RNF002/RNF009).
-   - **Aprovar e cancelar simultâneos → exatamente um vence.**
-   - HTTP (supertest em `server/app.ts`): conflito → 409 com a mensagem em português; professor em rota de admin → 403; sem token → 401.
-3. **Roteiro de teste manual** (`docs/roteiro-de-testes.md`): login, reservar, conflito, aprovar, recusar, cancelar, e-mails recebidos, inativar usuário e sala (reservas canceladas), tentar logar inativo, sessão expirada, celular.
-4. **Desempenho (RNF001):** medir o tempo de criação de reserva no ambiente publicado (com e sem cold start) e registrar no roteiro.
+   - **Testes de concorrência usam dois clientes `postgres` separados** (uma conexão por transação), para que as operações rodem de fato em paralelo:
+     - **duas criações simultâneas para o mesmo horário → exatamente uma aceita** (demonstração de RF007/RNF002/RNF009);
+     - **aprovar e cancelar simultâneos → exatamente um vence.**
+   - Inativação de sala e de usuário: cancela só as futuras `pendente`/`aprovada`, grava histórico com `alterado_por` = admin, tudo numa transação.
+   - Visibilidade em `GET /api/reservas`: professor não vê recusadas/canceladas de outros; `GET /api/reservas/pendentes` traz pendentes distantes (ex.: daqui a 3 meses).
+   - HTTP (supertest em `server/app.ts`): conflito → 409 com a mensagem em português; professor em rota de admin → 403; cancelar reserva alheia → 403; sem token → 401. Os tokens vêm de usuários de teste criados com a service role no projeto de testes e autenticados com `signInWithPassword`.
+3. **Roteiro de teste manual** (`docs/roteiro-de-testes.md`): login, reservar, conflito, aprovar, recusar, cancelar, e-mails recebidos, inativar usuário e sala (reservas canceladas e um único e-mail por pessoa), tentar logar inativo, sessão expirada, celular.
+4. **Desempenho (RNF001):** medir o tempo de criação de reserva no ambiente publicado, **incluindo o envio do e-mail**, com e sem cold start, e registrar no roteiro (ver regra de fallback em §6 E-mails).
 
 ## 11. Rastreabilidade dos requisitos
 
@@ -340,7 +360,7 @@ Conforme o RNF007, a contagem parte da **visualização da sala no calendário**
 | RF008 Cancelar | `POST /api/reservas/:id/cancelar` |
 | RF009 Calendário | Tela Calendário (FullCalendar) |
 | RF10 Filtros | Filtros do calendário e da tela Histórico de reservas |
-| RF11 Aprovação | Tela Aprovações |
+| RF11 Aprovação | Tela Aprovações (`GET /api/reservas/pendentes`) e modal de detalhes no calendário |
 | RF12 Notificação | Status na interface + e-mail em toda mudança de status |
 | RF13 Histórico | `historico_reservas` + tela Histórico de reservas |
 | RF14 Relatório PDF | `/api/relatorios/mensal` + jsPDF |
@@ -360,14 +380,14 @@ Conforme o RNF007, a contagem parte da **visualização da sala no calendário**
 
 1. Base: repositório, Supabase, migrações, primeiro admin, login, `/api/me`, layout com menu.
 2. Essenciais: salas, usuários, criar reserva com regra de conflito.
-3. Importantes: calendário completo, aprovação, cancelamento, histórico de status, e-mails, inativação com cancelamento automático, timeout de sessão.
-4. Desejáveis: filtros avançados, tela Histórico de reservas com filtros, relatório PDF.
+3. Importantes: calendário completo com modal de detalhes, aprovação, cancelamento, tela `/reservas` básica (próprias reservas com status, motivo de recusa e cancelar), e-mails, inativação com cancelamento automático, timeout de sessão.
+4. Desejáveis: filtros avançados (calendário e `/reservas`, incluindo visão de todas para o admin), histórico de mudanças de status por reserva, relatório PDF.
 
 ## 13. Fora do escopo
 
 - Cadastro público e recuperação de senha pelo próprio usuário (o admin define uma nova senha pela tela Usuários).
 - Reserva feita pelo admin em nome de um professor.
 - Reservas recorrentes (ex.: toda segunda-feira).
-- Reservas que atravessam a meia-noite, duram vários dias ou ficam fora de 07:00–23:00.
+- Reservas que atravessam a meia-noite, duram vários dias, ficam fora de 07:00–23:00 ou caem no domingo.
 - Notificações por outros canais além de e-mail.
 - Aplicativo móvel nativo.
