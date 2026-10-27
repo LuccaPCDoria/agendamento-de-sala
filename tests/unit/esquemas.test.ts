@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   esquemaCriarReserva, esquemaCriarUsuario, esquemaSala, esquemaRecusar,
-  esquemaListarReservas, esquemaMes,
+  esquemaListarReservas, esquemaMes, esquemaEditarSala,
 } from '../../shared/esquemas';
 
 const UUID = '123e4567-e89b-42d3-a456-426614174000';
@@ -20,4 +20,8 @@ describe('esquemas', () => {
   it('listagem: status em lista e minhas', () => expect(esquemaListarReservas.parse({ inicio: I, fim: F, status: 'recusada,cancelada', minhas: 'true' })).toMatchObject({ status: ['recusada', 'cancelada'], minhas: true }));
   it('listagem: janela acima de 62 dias rejeitada', () => expect(esquemaListarReservas.safeParse({ inicio: '2026-11-01T00:00:00Z', fim: '2027-01-03T00:00:00Z' }).success).toBe(false));
   it('mês 2026-13 rejeitado', () => expect(esquemaMes.safeParse('2026-13').success).toBe(false));
+  it('editar sala não aceita ativa (removido pelo parse)', () => {
+    const r = esquemaEditarSala.parse({ ativa: false });
+    expect(r).not.toHaveProperty('ativa');
+  });
 });

@@ -34,7 +34,7 @@ export const esquemaSala = z.object({
   recursos: z.array(z.string().trim().min(1)),
 });
 
-export const esquemaEditarSala = esquemaSala.partial().extend({ ativa: z.boolean().optional() });
+export const esquemaEditarSala = esquemaSala.partial();
 
 const papel = z.enum(PAPEIS, { errorMap: () => ({ message: 'Perfil inválido.' }) });
 
