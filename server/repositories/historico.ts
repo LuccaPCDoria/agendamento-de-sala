@@ -11,11 +11,12 @@ export function criarRepoHistorico(db: Executor): RepoHistorico {
   return {
     async registrar(entradas) {
       if (entradas.length === 0) return;
-      for (const e of entradas) {
-        await db`
-          insert into historico_reservas (reserva_id, status_anterior, status_novo, alterado_por)
-          values (${e.reservaId}, ${e.anterior}, ${e.novo}, ${e.alteradoPor})`;
-      }
+      await db`
+        insert into historico_reservas ${db(
+          entradas.map((e) => ({
+            reserva_id: e.reservaId, status_anterior: e.anterior, status_novo: e.novo, alterado_por: e.alteradoPor,
+          })),
+        )}`;
     },
   };
 }

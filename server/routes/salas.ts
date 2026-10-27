@@ -9,5 +9,7 @@ export function criarRotasSalas(deps: DependenciasApp): Router {
   router.get('/', c.listar);
   router.post('/', exigirAdmin, c.criar);
   router.patch('/:id', exigirAdmin, c.editar);
+  router.post('/:id/inativar', exigirAdmin, c.inativar);
+  router.post('/:id/reativar', exigirAdmin, c.reativar);
   return router;
 }

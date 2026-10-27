@@ -25,5 +25,12 @@ export function criarControladorSalas(deps: DependenciasApp) {
       res.json(await servico.editar(id.data, dados));
     } catch (e) { next(e); }
   };
-  return { listar, criar, editar };
+  const mudarAtiva = (acao: 'inativar' | 'reativar'): RequestHandler => async (req, res, next) => {
+    try {
+      const id = esquemaUuid.safeParse(req.params.id);
+      if (!id.success) throw naoEncontrado('Sala não encontrada.');
+      res.json(acao === 'inativar' ? await servico.inativar(req.usuario!, id.data) : await servico.reativar(id.data));
+    } catch (e) { next(e); }
+  };
+  return { listar, criar, editar, inativar: mudarAtiva('inativar'), reativar: mudarAtiva('reativar') };
 }

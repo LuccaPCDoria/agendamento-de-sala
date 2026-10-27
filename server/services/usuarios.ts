@@ -2,6 +2,7 @@ import type { DependenciasApp } from '../dependencias';
 import type { Perfil } from '../../shared/tipos';
 import type { DadosCriarUsuario, DadosEditarUsuario } from '../../shared/esquemas';
 import { invalido, naoEncontrado } from '../lib/erros';
+import { agruparPorSolicitante } from './notificacoes';
 
 export function criarServicoUsuarios(deps: DependenciasApp) {
   return {
@@ -33,6 +34,30 @@ export function criarServicoUsuarios(deps: DependenciasApp) {
         if (d.email !== undefined || d.novaSenha !== undefined) {
           await deps.authAdmin.atualizarUsuario(id, { email: d.email, senha: d.novaSenha });
         }
+        return perfil;
+      });
+    },
+    async inativar(admin: Perfil, id: string): Promise<Perfil> {
+      if (admin.id === id) throw invalido('Você não pode inativar a sua própria conta.');
+      const { perfil, detalhadas } = await deps.transacao(async (r) => {
+        const perfil = await r.perfis.definirAtivo(id, false);
+        if (!perfil) throw naoEncontrado('Usuário não encontrado.');
+        const canceladas = await r.reservas.cancelarFuturasDoUsuario(id);
+        await r.historico.registrar(
+          canceladas.map((c) => ({ reservaId: c.id, anterior: c.anterior, novo: 'cancelada' as const, alteradoPor: admin.id })),
+        );
+        const detalhadas = await r.reservas.buscarDetalhadas(canceladas.map((c) => c.id));
+        await deps.authAdmin.definirBloqueio(id, true);
+        return { perfil, detalhadas };
+      });
+      await deps.notificar(agruparPorSolicitante(detalhadas, 'cancelada'));
+      return perfil;
+    },
+    async reativar(id: string): Promise<Perfil> {
+      return deps.transacao(async (r) => {
+        const perfil = await r.perfis.definirAtivo(id, true);
+        if (!perfil) throw naoEncontrado('Usuário não encontrado.');
+        await deps.authAdmin.definirBloqueio(id, false);
         return perfil;
       });
     },

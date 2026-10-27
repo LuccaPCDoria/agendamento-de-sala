@@ -32,6 +32,10 @@ export interface RepoReservas {
     agora: Date;
   }): Promise<ReservaDetalhada[]>;
   listarPendentesFuturas(agora: Date): Promise<ReservaDetalhada[]>;
+  /** Trava (for update) e cancela as reservas futuras pendentes/aprovadas da sala; devolve o status anterior. */
+  cancelarFuturasDaSala(salaId: string): Promise<{ id: string; anterior: StatusReserva }[]>;
+  /** Idem, para as reservas do usuário. */
+  cancelarFuturasDoUsuario(usuarioId: string): Promise<{ id: string; anterior: StatusReserva }[]>;
 }
 
 export function criarRepoReservas(db: Executor): RepoReservas {
@@ -43,6 +47,15 @@ export function criarRepoReservas(db: Executor): RepoReservas {
     from reservas r
     join salas s on s.id = r.sala_id
     join perfis p on p.id = r.usuario_id`;
+  async function cancelarTravando(
+    travar: () => Promise<{ id: string; status: StatusReserva }[]>,
+  ): Promise<{ id: string; anterior: StatusReserva }[]> {
+    const linhas = await travar();
+    if (linhas.length === 0) return [];
+    const ids = linhas.map((l) => l.id);
+    await db`update reservas set status = 'cancelada', atualizado_em = now() where id = any(${db.array(ids, 2951)})`;
+    return linhas.map((l) => ({ id: l.id, anterior: l.status }));
+  }
   return {
     async inserir(d) {
       const [r] = await db<Reserva[]>`
@@ -106,6 +119,18 @@ export function criarRepoReservas(db: Executor): RepoReservas {
         ${selecionar()}
         where r.status = 'pendente' and r.inicio > ${agora}
         order by r.inicio`;
+    },
+    cancelarFuturasDaSala(salaId) {
+      return cancelarTravando(() => db<{ id: string; status: StatusReserva }[]>`
+        select id, status from reservas
+        where sala_id = ${salaId} and status in ('pendente', 'aprovada') and inicio > now()
+        order by id for update`);
+    },
+    cancelarFuturasDoUsuario(usuarioId) {
+      return cancelarTravando(() => db<{ id: string; status: StatusReserva }[]>`
+        select id, status from reservas
+        where usuario_id = ${usuarioId} and status in ('pendente', 'aprovada') and inicio > now()
+        order by id for update`);
     },
   };
 }

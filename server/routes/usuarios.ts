@@ -9,5 +9,7 @@ export function criarRotasUsuarios(deps: DependenciasApp): Router {
   router.get('/', c.listar);
   router.post('/', c.criar);
   router.patch('/:id', c.editar);
+  router.post('/:id/inativar', c.inativar);
+  router.post('/:id/reativar', c.reativar);
   return router;
 }

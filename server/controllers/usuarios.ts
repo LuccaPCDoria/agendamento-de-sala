@@ -25,5 +25,12 @@ export function criarControladorUsuarios(deps: DependenciasApp) {
       res.json(await servico.editar(req.usuario!, id.data, dados));
     } catch (e) { next(e); }
   };
-  return { listar, criar, editar };
+  const mudarAtivo = (acao: 'inativar' | 'reativar'): RequestHandler => async (req, res, next) => {
+    try {
+      const id = esquemaUuid.safeParse(req.params.id);
+      if (!id.success) throw naoEncontrado('Usuário não encontrado.');
+      res.json(acao === 'inativar' ? await servico.inativar(req.usuario!, id.data) : await servico.reativar(id.data));
+    } catch (e) { next(e); }
+  };
+  return { listar, criar, editar, inativar: mudarAtivo('inativar'), reativar: mudarAtivo('reativar') };
 }
