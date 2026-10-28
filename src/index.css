@@ -1,3 +1,9 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@media (max-width: 640px) {
+  .fc .fc-toolbar { flex-wrap: wrap; gap: 0.5rem; justify-content: center; }
+  .fc .fc-toolbar-title { font-size: 1rem; text-align: center; }
+  .fc .fc-button { padding: 0.3rem 0.5rem; font-size: 0.8rem; }
+}

@@ -46,14 +46,14 @@ export default function Usuarios() {
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead><tr className="border-b">
-              <th className="p-2">Nome</th><th className="p-2">E-mail</th><th className="p-2">Perfil</th>
+              <th className="p-2">Nome</th><th className="hidden p-2 sm:table-cell">E-mail</th><th className="p-2">Perfil</th>
               <th className="p-2">Situação</th><th className="p-2" />
             </tr></thead>
             <tbody>
               {data.map((u) => (
                 <tr key={u.id} className="border-b">
                   <td className="p-2">{u.nome}</td>
-                  <td className="p-2">{u.email}</td>
+                  <td className="hidden p-2 sm:table-cell">{u.email}</td>
                   <td className="p-2">{ROTULO_PAPEL[u.papel]}</td>
                   <td className="p-2">{u.ativo ? 'Ativo' : 'Inativo'}</td>
                   <td className="p-2">

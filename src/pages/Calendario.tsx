@@ -36,7 +36,12 @@ export default function Calendario() {
   const tipoRef = useRef<TipoSala | ''>('');
   const statusRef = useRef<StatusFiltro[]>(STATUS_CALENDARIO);
 
-  const visaoInicial = window.matchMedia?.('(max-width: 640px)').matches ? 'listWeek' : 'timeGridWeek';
+  const [estreita] = useState(() => !!window.matchMedia?.('(max-width: 640px)').matches);
+  const visaoInicial = estreita ? 'listWeek' : 'timeGridWeek';
+  const cabecalho = estreita
+    ? { left: 'prev,next', center: 'title', right: 'today' }
+    : { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek' };
+  const rodape = estreita ? { center: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek' } : undefined;
 
   const buscarEventos = useCallback(
     (info: { startStr: string; endStr: string }, ok: (e: EventInput[]) => void, falha: (e: Error) => void) => {
@@ -86,24 +91,24 @@ export default function Calendario() {
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-xl font-semibold">Calendário</h1>
-        <div className="flex items-center gap-2">
-          <label className="text-sm">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+          <label className="min-w-[8rem] flex-1 text-sm sm:flex-none">
             <span className="sr-only">Filtrar por sala</span>
-            <select value={salaId} onChange={(e) => alterarSala(e.target.value)} className="rounded border px-3 py-2">
+            <select value={salaId} onChange={(e) => alterarSala(e.target.value)} className="w-full rounded border px-3 py-2 sm:w-auto">
               <option value="">Todas as salas</option>
               {salas.map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}
             </select>
           </label>
-          <label className="text-sm">
+          <label className="min-w-[8rem] flex-1 text-sm sm:flex-none">
             <span className="sr-only">Filtrar por tipo</span>
             <select value={tipo} onChange={(e) => alterarTipo(e.target.value as TipoSala | '')}
-              className="rounded border px-3 py-2">
+              className="w-full rounded border px-3 py-2 sm:w-auto">
               <option value="">Todas</option>
               {TIPOS_SALA.map((t) => <option key={t} value={t}>{ROTULO_TIPO[t]}</option>)}
             </select>
           </label>
           <button type="button" onClick={() => setSelecao({})}
-            className="rounded bg-blue-600 px-3 py-2 text-white">Nova reserva</button>
+            className="w-full rounded bg-blue-600 px-3 py-2 text-white sm:w-auto">Nova reserva</button>
         </div>
       </div>
 
@@ -123,7 +128,8 @@ export default function Calendario() {
         locale={ptBr}
         timeZone="local"
         initialView={visaoInicial}
-        headerToolbar={{ left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek' }}
+        headerToolbar={cabecalho}
+        footerToolbar={rodape}
         slotMinTime="07:00:00"
         slotMaxTime="23:00:00"
         businessHours={{ daysOfWeek: DIAS_FUNCIONAMENTO, startTime: HORA_ABERTURA, endTime: HORA_FECHAMENTO }}

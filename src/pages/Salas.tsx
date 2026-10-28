@@ -46,7 +46,7 @@ export default function Salas() {
           <table className="w-full text-left text-sm">
             <thead><tr className="border-b">
               <th className="p-2">Nome</th><th className="p-2">Tipo</th><th className="p-2">Capacidade</th>
-              <th className="p-2">Recursos</th><th className="p-2">Situação</th><th className="p-2" />
+              <th className="hidden p-2 sm:table-cell">Recursos</th><th className="p-2">Situação</th><th className="p-2" />
             </tr></thead>
             <tbody>
               {data.map((s) => (
@@ -54,7 +54,7 @@ export default function Salas() {
                   <td className="p-2">{s.nome}</td>
                   <td className="p-2">{ROTULO_TIPO[s.tipo]}</td>
                   <td className="p-2">{s.capacidade}</td>
-                  <td className="p-2">
+                  <td className="hidden p-2 sm:table-cell">
                     {s.recursos.map((r) => (
                       <span key={r} className="mr-1 rounded bg-slate-100 px-2 py-0.5 text-xs">{r}</span>
                     ))}
