@@ -2,6 +2,9 @@ import { useState, type FormEvent } from 'react';
 import { esquemaSala, type DadosSala } from '../../shared/esquemas';
 import { TIPOS_SALA } from '../../shared/constantes';
 import type { Sala } from '../../shared/tipos';
+import { Botao } from '../ui/Botao';
+import { Campo } from '../ui/Campo';
+import { Selecao } from '../ui/Selecao';
 import { ROTULO_TIPO } from '../rotulos';
 
 interface Props {
@@ -36,34 +39,17 @@ export default function FormSala({ inicial, aoSalvar, erro, salvando }: Props) {
     void aoSalvar(r.data);
   }
 
-  const campo = 'mt-1 w-full rounded border px-3 py-2';
-  const msg = (k: string) => erros[k] && <span role="alert" className="block text-sm text-red-600">{erros[k]}</span>;
 
   return (
     <form onSubmit={enviar} noValidate className="space-y-3">
-      <label className="block text-sm">Nome
-        <input value={nome} onChange={(e) => setNome(e.target.value)} className={campo} />
-        {msg('nome')}
-      </label>
-      <label className="block text-sm">Tipo
-        <select value={tipo} onChange={(e) => setTipo(e.target.value)} className={campo}>
-          {TIPOS_SALA.map((t) => <option key={t} value={t}>{ROTULO_TIPO[t]}</option>)}
-        </select>
-        {msg('tipo')}
-      </label>
-      <label className="block text-sm">Capacidade
-        <input type="number" min={1} value={capacidade} onChange={(e) => setCapacidade(e.target.value)} className={campo} />
-        {msg('capacidade')}
-      </label>
-      <label className="block text-sm">Recursos (separados por vírgula)
-        <input value={recursos} onChange={(e) => setRecursos(e.target.value)} className={campo} />
-        {msg('recursos')}
-      </label>
-      {erro && <p role="alert" className="text-sm text-red-600">{erro}</p>}
-      <button type="submit" disabled={salvando}
-        className="w-full rounded bg-blue-600 px-3 py-2 text-white disabled:opacity-60">
-        {salvando ? 'Salvando...' : 'Salvar'}
-      </button>
+      <Campo rotulo="Nome" value={nome} onChange={(e) => setNome(e.target.value)} erro={erros.nome} />
+      <Selecao rotulo="Tipo" value={tipo} onChange={(e) => setTipo(e.target.value)} erro={erros.tipo}>
+        {TIPOS_SALA.map((t) => <option key={t} value={t}>{ROTULO_TIPO[t]}</option>)}
+      </Selecao>
+      <Campo rotulo="Capacidade" type="number" min={1} value={capacidade} onChange={(e) => setCapacidade(e.target.value)} erro={erros.capacidade} />
+      <Campo rotulo="Recursos (separados por vírgula)" value={recursos} onChange={(e) => setRecursos(e.target.value)} erro={erros.recursos} />
+      {erro && <p role="alert" className="text-sm text-erro">{erro}</p>}
+      <Botao type="submit" carregando={salvando} textoCarregando="Salvando..." className="w-full">Salvar</Botao>
     </form>
   );
 }

@@ -4,6 +4,12 @@ import type { Perfil } from '../../shared/tipos';
 import FormUsuario from '../components/FormUsuario';
 import Modal from '../components/Modal';
 import { useCriarUsuario, useEditarUsuario, useInativarUsuario, useReativarUsuario, useUsuarios } from '../consultas/usuarios';
+import { Plus, Users } from "lucide-react";
+import { Botao } from "../ui/Botao";
+import { Cartao } from "../ui/Cartao";
+import { EstadoVazio } from "../ui/EstadoVazio";
+import { SeloSituacao } from "../ui/SeloSituacao";
+import { Titulo } from "../ui/Titulo";
 import { CONFIRMA_INATIVAR, ROTULO_PAPEL } from '../rotulos';
 
 export default function Usuarios() {
@@ -34,40 +40,39 @@ export default function Usuarios() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Usuários</h1>
-        <button type="button" onClick={() => setAberto(true)}
-          className="rounded bg-blue-600 px-3 py-2 text-sm text-white">Novo usuário</button>
-      </div>
+      <Titulo acao={<Botao icone={<Plus className="h-4 w-4" aria-hidden="true" />} onClick={() => setAberto(true)}>Novo usuário</Botao>}>Usuários</Titulo>
       {isLoading && <p>Carregando...</p>}
-      {error && <p role="alert" className="text-red-600">{error.message}</p>}
-      {erroAcao && <p role="alert" className="text-red-600">{erroAcao}</p>}
-      {data && (
-        <div className="overflow-x-auto">
+      {error && <p role="alert" className="text-erro">{error.message}</p>}
+      {erroAcao && <p role="alert" className="text-erro">{erroAcao}</p>}
+      {data && data.length === 0 && <Cartao><EstadoVazio icone={Users} mensagem="Nenhum usuário cadastrado" /></Cartao>}
+      {data && data.length > 0 && (
+        <Cartao className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead><tr className="border-b">
-              <th className="p-2">Nome</th><th className="hidden p-2 sm:table-cell">E-mail</th><th className="p-2">Perfil</th>
-              <th className="p-2">Situação</th><th className="p-2" />
+              <th className="p-2 font-bold text-suave">Nome</th><th className="hidden p-2 font-bold text-suave sm:table-cell">E-mail</th><th className="p-2 font-bold text-suave">Perfil</th>
+              <th className="p-2 font-bold text-suave">Situação</th><th className="p-2" />
             </tr></thead>
             <tbody>
               {data.map((u) => (
-                <tr key={u.id} className="border-b">
+                <tr key={u.id} className="border-b last:border-b-0 hover:bg-superficie-2">
                   <td className="p-2">{u.nome}</td>
                   <td className="hidden p-2 sm:table-cell">{u.email}</td>
                   <td className="p-2">{ROTULO_PAPEL[u.papel]}</td>
-                  <td className="p-2">{u.ativo ? 'Ativo' : 'Inativo'}</td>
+                  <td className="p-2"><SeloSituacao ativo={u.ativo} rotulos={['Ativo', 'Inativo']} /></td>
                   <td className="p-2">
-                    <button type="button" onClick={() => setEditando(u)} className="text-blue-600">Editar</button>
-                    <button type="button" disabled={inativar.isPending || reativar.isPending}
-                      onClick={() => alternar(u)} className="ml-3 text-red-600 disabled:opacity-50">
-                      {u.ativo ? 'Inativar' : 'Reativar'}
-                    </button>
+                    <div className="flex gap-2">
+                    <Botao variante="secundario" onClick={() => setEditando(u)}>Editar</Botao>
+                    <Botao variante={u.ativo ? "perigo" : "secundario"} disabled={inativar.isPending || reativar.isPending}
+                      onClick={() => alternar(u)}>
+                      {u.ativo ? "Inativar" : "Reativar"}
+                    </Botao>
+                    </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
+        </Cartao>
       )}
       {(aberto || editando) && (
         <Modal titulo={editando ? 'Editar usuário' : 'Novo usuário'} aoFechar={fechar}>

@@ -1,6 +1,11 @@
 import { useState } from 'react';
 import { formatInTimeZone } from 'date-fns-tz';
 import { FUSO } from '../../shared/constantes';
+import { Download } from 'lucide-react';
+import { Botao } from '../ui/Botao';
+import { Campo } from '../ui/Campo';
+import { Cartao } from '../ui/Cartao';
+import { Titulo } from '../ui/Titulo';
 import { ErroApi } from '../lib/api';
 import { buscarRelatorioMensal } from '../consultas/relatorios';
 import { gerarPdfMensal } from '../relatorios/gerarPdf';
@@ -25,19 +30,17 @@ export default function Relatorios() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">Relatórios</h1>
-      <div className="flex items-end gap-3">
-        <label className="text-sm">
-          Mês
-          <input type="month" value={mes} onChange={(e) => setMes(e.target.value)}
-            className="mt-1 block rounded border border-slate-300 px-2 py-1" />
-        </label>
-        <button type="button" onClick={() => void baixar()} disabled={carregando || !mes}
-          className="rounded bg-slate-800 px-3 py-1.5 text-sm text-white disabled:opacity-50">
-          Baixar PDF
-        </button>
-      </div>
-      {erro && <p role="alert" className="text-sm text-red-700">{erro}</p>}
+      <Titulo subtitulo="Baixe o resumo mensal das reservas em PDF">Relatórios</Titulo>
+      <Cartao className="p-4">
+        <div className="flex flex-wrap items-end gap-3">
+          <Campo rotulo="Mês" type="month" value={mes} onChange={(e) => setMes(e.target.value)} />
+          <Botao icone={<Download className="h-4 w-4" aria-hidden="true" />} onClick={() => void baixar()}
+            disabled={!mes} carregando={carregando} textoCarregando="Gerando...">
+            Baixar PDF
+          </Botao>
+        </div>
+      </Cartao>
+      {erro && <p role="alert" className="text-sm text-erro">{erro}</p>}
     </div>
   );
 }

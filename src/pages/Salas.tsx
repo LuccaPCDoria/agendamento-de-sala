@@ -3,6 +3,12 @@ import type { Sala } from '../../shared/tipos';
 import FormSala from '../components/FormSala';
 import Modal from '../components/Modal';
 import { useCriarSala, useEditarSala, useInativarSala, useReativarSala, useSalas } from '../consultas/salas';
+import { Plus, DoorOpen } from "lucide-react";
+import { Botao } from "../ui/Botao";
+import { Cartao } from "../ui/Cartao";
+import { EstadoVazio } from "../ui/EstadoVazio";
+import { SeloSituacao } from "../ui/SeloSituacao";
+import { Titulo } from "../ui/Titulo";
 import { CONFIRMA_INATIVAR, ROTULO_TIPO } from '../rotulos';
 
 export default function Salas() {
@@ -33,45 +39,44 @@ export default function Salas() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Salas</h1>
-        <button type="button" onClick={() => setAberto(true)}
-          className="rounded bg-blue-600 px-3 py-2 text-sm text-white">Nova sala</button>
-      </div>
+      <Titulo acao={<Botao icone={<Plus className="h-4 w-4" aria-hidden="true" />} onClick={() => setAberto(true)}>Nova sala</Botao>}>Salas</Titulo>
       {isLoading && <p>Carregando...</p>}
-      {error && <p role="alert" className="text-red-600">{error.message}</p>}
-      {erroAcao && <p role="alert" className="text-red-600">{erroAcao}</p>}
-      {data && (
-        <div className="overflow-x-auto">
+      {error && <p role="alert" className="text-erro">{error.message}</p>}
+      {erroAcao && <p role="alert" className="text-erro">{erroAcao}</p>}
+      {data && data.length === 0 && <Cartao><EstadoVazio icone={DoorOpen} mensagem="Nenhuma sala cadastrada" /></Cartao>}
+      {data && data.length > 0 && (
+        <Cartao className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead><tr className="border-b">
-              <th className="p-2">Nome</th><th className="p-2">Tipo</th><th className="p-2">Capacidade</th>
-              <th className="hidden p-2 sm:table-cell">Recursos</th><th className="p-2">Situação</th><th className="p-2" />
+              <th className="p-2 font-bold text-suave">Nome</th><th className="p-2 font-bold text-suave">Tipo</th><th className="p-2 font-bold text-suave">Capacidade</th>
+              <th className="hidden p-2 font-bold text-suave sm:table-cell">Recursos</th><th className="p-2 font-bold text-suave">Situação</th><th className="p-2" />
             </tr></thead>
             <tbody>
               {data.map((s) => (
-                <tr key={s.id} className="border-b">
+                <tr key={s.id} className="border-b last:border-b-0 hover:bg-superficie-2">
                   <td className="p-2">{s.nome}</td>
                   <td className="p-2">{ROTULO_TIPO[s.tipo]}</td>
                   <td className="p-2">{s.capacidade}</td>
                   <td className="hidden p-2 sm:table-cell">
                     {s.recursos.map((r) => (
-                      <span key={r} className="mr-1 rounded bg-slate-100 px-2 py-0.5 text-xs">{r}</span>
+                      <span key={r} className="mr-1 inline-block rounded-full bg-superficie-2 px-2 py-0.5 text-xs text-texto">{r}</span>
                     ))}
                   </td>
-                  <td className="p-2">{s.ativa ? 'Ativa' : 'Inativa'}</td>
+                  <td className="p-2"><SeloSituacao ativo={s.ativa} rotulos={['Ativa', 'Inativa']} /></td>
                   <td className="p-2">
-                    <button type="button" onClick={() => setEditando(s)} className="text-blue-600">Editar</button>
-                    <button type="button" disabled={inativar.isPending || reativar.isPending}
-                      onClick={() => alternar(s)} className="ml-3 text-red-600 disabled:opacity-50">
-                      {s.ativa ? 'Inativar' : 'Reativar'}
-                    </button>
+                    <div className="flex gap-2">
+                    <Botao variante="secundario" onClick={() => setEditando(s)}>Editar</Botao>
+                    <Botao variante={s.ativa ? "perigo" : "secundario"} disabled={inativar.isPending || reativar.isPending}
+                      onClick={() => alternar(s)}>
+                      {s.ativa ? "Inativar" : "Reativar"}
+                    </Botao>
+                    </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
+        </Cartao>
       )}
       {(aberto || editando) && (
         <Modal titulo={editando ? 'Editar sala' : 'Nova sala'} aoFechar={fechar}>
