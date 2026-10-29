@@ -11,3 +11,51 @@
   .fc .fc-toolbar-title { font-size: 1rem; text-align: center; }
   .fc .fc-button { padding: 0.3rem 0.5rem; font-size: 0.8rem; }
 }
+
+.fc {
+  --fc-page-bg-color: rgb(var(--cor-superficie));
+  --fc-border-color: rgb(var(--cor-borda));
+  --fc-neutral-bg-color: rgb(var(--cor-superficie-2));
+  --fc-neutral-text-color: rgb(var(--cor-suave));
+  --fc-button-text-color: rgb(var(--cor-primaria-forte));
+  --fc-button-bg-color: rgb(var(--cor-superficie));
+  --fc-button-border-color: rgb(var(--cor-borda-campo));
+  --fc-button-hover-bg-color: rgb(var(--cor-superficie-2));
+  --fc-button-hover-border-color: rgb(var(--cor-borda-campo));
+  --fc-button-active-bg-color: rgb(var(--cor-primaria-suave));
+  --fc-button-active-border-color: rgb(var(--cor-primaria));
+  --fc-today-bg-color: rgb(var(--cor-primaria) / .08);
+  --fc-highlight-color: rgb(var(--cor-primaria) / .18);
+  --fc-now-indicator-color: rgb(var(--cor-coral));
+  --fc-non-business-color: rgb(var(--cor-superficie-2) / .6);
+  --fc-list-event-hover-bg-color: rgb(var(--cor-superficie-2));
+  color: rgb(var(--cor-texto));
+}
+.fc .fc-toolbar-title { font-family: 'Manrope', sans-serif; font-weight: 700; }
+.fc .fc-timegrid-slot-label, .fc .fc-timegrid-axis-cushion { font-family: 'Space Mono', monospace; font-weight: 400; }
+
+.fc .fc-button:focus,
+.fc .fc-button-primary:focus,
+.fc .fc-button-primary:not(:disabled).fc-button-active:focus,
+.fc .fc-button-primary:not(:disabled):active:focus,
+.fc .fc-event:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgb(var(--cor-superficie)), 0 0 0 4px rgb(var(--cor-primaria));
+}
+
+.fc .evento-aprovada {
+  --fc-event-bg-color: rgb(var(--cor-evento-aprovada));
+  --fc-event-border-color: rgb(var(--cor-evento-aprovada));
+  --fc-event-text-color: rgb(var(--cor-evento-aprovada-texto));
+}
+.fc .evento-pendente {
+  --fc-event-bg-color: rgb(var(--cor-coral));
+  --fc-event-border-color: rgb(var(--cor-coral-forte));
+  --fc-event-text-color: rgb(var(--cor-coral-texto));
+}
+.fc .evento-expirada {
+  --fc-event-bg-color: rgb(var(--cor-evento-expirada));
+  --fc-event-border-color: rgb(var(--cor-neutro-forte));
+  --fc-event-text-color: rgb(var(--cor-texto));
+}
+.fc .fc-v-event.evento-expirada, .fc .fc-h-event.evento-expirada { border-style: dashed; }

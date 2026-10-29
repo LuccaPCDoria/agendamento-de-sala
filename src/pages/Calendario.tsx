@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
-import type { EventInput } from '@fullcalendar/core';
+import type { EventContentArg, EventInput } from '@fullcalendar/core';
+import { Check, Clock, History, Plus } from 'lucide-react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
@@ -10,7 +11,7 @@ import {
   DIAS_FUNCIONAMENTO, HORA_ABERTURA, HORA_FECHAMENTO, TIPOS_SALA,
   type StatusFiltro, type TipoSala,
 } from '../../shared/constantes';
-import { reservaParaEvento } from '../calendario/eventos';
+import { classeDoEvento, reservaParaEvento } from '../calendario/eventos';
 import ModalDetalhes from '../calendario/ModalDetalhes';
 import ModalNovaReserva from '../calendario/ModalNovaReserva';
 import type { ReservaDTO } from '../../shared/tipos';
@@ -18,10 +19,55 @@ import { useAuth } from '../auth/AuthProvider';
 import { buscarReservas } from '../consultas/reservas';
 import { useSalas } from '../consultas/salas';
 import { ROTULO_STATUS, ROTULO_TIPO } from '../rotulos';
+import { Botao } from '../ui/Botao';
+import { Cartao } from '../ui/Cartao';
+import { Hora } from '../ui/Hora';
+import { Selecao as CampoSelecao } from '../ui/Selecao';
+import { Titulo } from '../ui/Titulo';
 
 const STATUS_CALENDARIO: StatusFiltro[] = ['pendente', 'aprovada', 'expirada'];
 
 interface Selecao { inicio?: Date; fim?: Date }
+
+const ICONE_EVENTO = { 'evento-aprovada': Check, 'evento-pendente': Clock, 'evento-expirada': History };
+
+function conteudoEvento(arg: EventContentArg) {
+  const reserva = arg.event.extendedProps.reserva as ReservaDTO;
+  const Icone = ICONE_EVENTO[classeDoEvento(reserva)];
+  const icone = <Icone size={12} aria-hidden="true" className="shrink-0" />;
+  const tipoVisao = arg.view.type;
+  if (tipoVisao === 'dayGridMonth') {
+    return (
+      <div className="flex min-w-0 items-center gap-1">
+        <span className="fc-daygrid-event-dot" />
+        {icone}
+        <Hora className="font-bold">{arg.timeText}</Hora>
+        <span className="truncate">{arg.event.title}</span>
+      </div>
+    );
+  }
+  if (tipoVisao === 'listWeek') {
+    return (
+      <span className="inline-flex items-center gap-1">
+        {icone}
+        <span>{arg.event.title}</span>
+      </span>
+    );
+  }
+  return (
+    <div className="flex min-w-0 items-center gap-1">
+      {icone}
+      <Hora className="font-bold">{arg.timeText}</Hora>
+      <span className="truncate">{arg.event.title}</span>
+    </div>
+  );
+}
+
+const AMOSTRA: Record<string, string> = {
+  pendente: 'border border-coral-forte bg-coral',
+  aprovada: 'bg-evento-aprovada',
+  expirada: 'border border-dashed border-neutro-forte bg-evento-expirada',
+};
 
 export default function Calendario() {
   const calendarRef = useRef<FullCalendar>(null);
@@ -88,40 +134,37 @@ export default function Calendario() {
   }
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-xl font-semibold">Calendário</h1>
-        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
-          <label className="min-w-[8rem] flex-1 text-sm sm:flex-none">
-            <span className="sr-only">Filtrar por sala</span>
-            <select value={salaId} onChange={(e) => alterarSala(e.target.value)} className="w-full rounded border px-3 py-2 sm:w-auto">
-              <option value="">Todas as salas</option>
-              {salas.map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}
-            </select>
-          </label>
-          <label className="min-w-[8rem] flex-1 text-sm sm:flex-none">
-            <span className="sr-only">Filtrar por tipo</span>
-            <select value={tipo} onChange={(e) => alterarTipo(e.target.value as TipoSala | '')}
-              className="w-full rounded border px-3 py-2 sm:w-auto">
-              <option value="">Todas</option>
-              {TIPOS_SALA.map((t) => <option key={t} value={t}>{ROTULO_TIPO[t]}</option>)}
-            </select>
-          </label>
-          <button type="button" onClick={() => setSelecao({})}
-            className="w-full rounded bg-blue-600 px-3 py-2 text-white sm:w-auto">Nova reserva</button>
-        </div>
-      </div>
+    <div>
+      <Titulo
+        subtitulo="Veja a ocupação e reserve em poucos cliques"
+        acao={<Botao variante="principal" icone={<Plus size={16} aria-hidden="true" />} onClick={() => setSelecao({})}>Nova reserva</Botao>}
+      >
+        Calendário
+      </Titulo>
 
-      <fieldset className="flex flex-wrap items-center gap-3 text-sm">
-        <legend className="sr-only">Filtrar por status</legend>
-        {STATUS_CALENDARIO.map((st) => (
-          <label key={st} className="flex items-center gap-1">
-            <input type="checkbox" checked={status.includes(st)} onChange={() => alternarStatus(st)} />
-            {ROTULO_STATUS[st]}
-          </label>
-        ))}
-      </fieldset>
+      <Cartao className="mb-4 flex flex-wrap items-end gap-3 p-4">
+        <CampoSelecao rotulo="Filtrar por sala" rotuloOculto value={salaId} onChange={(e) => alterarSala(e.target.value)}>
+          <option value="">Todas as salas</option>
+          {salas.map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}
+        </CampoSelecao>
+        <CampoSelecao rotulo="Filtrar por tipo" rotuloOculto value={tipo} onChange={(e) => alterarTipo(e.target.value as TipoSala | '')}>
+          <option value="">Todas</option>
+          {TIPOS_SALA.map((t) => <option key={t} value={t}>{ROTULO_TIPO[t]}</option>)}
+        </CampoSelecao>
+        <fieldset className="flex flex-wrap items-center gap-4 pb-2 text-sm text-texto">
+          <legend className="sr-only">Filtrar por status</legend>
+          {STATUS_CALENDARIO.map((st) => (
+            <label key={st} className="flex items-center gap-2">
+              <input type="checkbox" checked={status.includes(st)} onChange={() => alternarStatus(st)}
+                className="h-4 w-4 accent-primaria-botao focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primaria focus-visible:ring-offset-2 focus-visible:ring-offset-superficie" />
+              <span aria-hidden="true" data-amostra={st} className={`inline-block h-3 w-3 rounded-sm ${AMOSTRA[st]}`} />
+              {ROTULO_STATUS[st]}
+            </label>
+          ))}
+        </fieldset>
+      </Cartao>
 
+      <Cartao className="p-2 sm:p-4">
       <FullCalendar
         ref={calendarRef}
         plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]}
@@ -141,6 +184,11 @@ export default function Calendario() {
         dateClick={(info) => {
           if (info.view.type === 'dayGridMonth') info.view.calendar.changeView('timeGridDay', info.date);
         }}
+        eventContent={conteudoEvento}
+        eventDidMount={(info) => {
+          const r = info.event.extendedProps.reserva as ReservaDTO;
+          info.el.title = `${ROTULO_STATUS[r.expirada ? 'expirada' : r.status]} · ${info.event.title}`;
+        }}
         eventClick={(info) => setDetalhe(info.event.extendedProps.reserva as ReservaDTO)}
         select={(info) => {
           if (info.view.type === 'dayGridMonth') {
@@ -150,6 +198,7 @@ export default function Calendario() {
           setSelecao({ inicio: info.start, fim: info.end });
         }}
       />
+      </Cartao>
 
       {detalhe && perfil && <ModalDetalhes reserva={detalhe} perfil={perfil} aoFechar={fecharDetalhe} />}
 

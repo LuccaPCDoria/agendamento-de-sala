@@ -54,4 +54,14 @@ describe('Calendario', () => {
     await user.click(screen.getByRole('checkbox', { name: 'Expirada' }));
     await waitFor(() => expect(ultima().status).toBe('pendente,aprovada'));
   });
+
+  it('fieldset de status tem as 3 amostras', () => {
+    const { container } = render(
+      <QueryClientProvider client={new QueryClient()}>
+        <Calendario />
+      </QueryClientProvider>,
+    );
+    ['pendente', 'aprovada', 'expirada'].forEach((s) =>
+      expect(container.querySelector(`[data-amostra="${s}"]`)).not.toBeNull());
+  });
 });

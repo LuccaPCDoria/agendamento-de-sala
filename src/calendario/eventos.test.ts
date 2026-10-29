@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ReservaDTO } from '../../shared/tipos';
-import { reservaParaEvento } from './eventos';
+import { classeDoEvento, reservaParaEvento } from './eventos';
 
 const r: ReservaDTO = {
   id: '1', salaId: 's', salaNome: 'Sala A', salaTipo: 'reuniao', usuarioId: 'u',
@@ -9,10 +9,20 @@ const r: ReservaDTO = {
 };
 
 describe('reservaParaEvento', () => {
-  it('cores por status', () => {
-    expect(reservaParaEvento({ ...r, status: 'aprovada', expirada: false }).backgroundColor).toBe('#22c55e');
-    expect(reservaParaEvento({ ...r, status: 'pendente', expirada: false }).backgroundColor).toBe('#facc15');
-    expect(reservaParaEvento({ ...r, status: 'pendente', expirada: true }).backgroundColor).toBe('#9ca3af');
+  it.each([
+    ['aprovada', false, 'evento-aprovada'],
+    ['pendente', false, 'evento-pendente'],
+    ['pendente', true, 'evento-expirada'],
+  ] as const)('%s (expirada=%s) → %s', (status, expirada, classe) => {
+    const rr = { ...r, status, expirada };
+    expect(classeDoEvento(rr)).toBe(classe);
+    expect(reservaParaEvento(rr).classNames).toEqual([classe]);
+  });
+  it('não define cores inline', () => {
+    const e = reservaParaEvento(r);
+    expect(e).not.toHaveProperty('backgroundColor');
+    expect(e).not.toHaveProperty('borderColor');
+    expect(e).not.toHaveProperty('textColor');
   });
   it('título e extendedProps', () => {
     const e = reservaParaEvento(r);
