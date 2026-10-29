@@ -283,9 +283,9 @@ O `tratarErros` identifica o `23505` pelo `constraint_name` do erro, nunca de fo
 | `/login` | público | E-mail e senha |
 | `/` Calendário | todos | FullCalendar com visões dia/semana/mês; filtros por sala, tipo e status; eventos 🟨 pendente / 🟩 aprovada / ⬜ expirada com sala, horário, solicitante e finalidade; botão **"Nova reserva"**. **Clique em um evento** abre o modal de detalhes: dados da reserva, histórico de mudanças (exibido e buscado **apenas** para o dono ou admin), botão cancelar (dono ou admin) e aprovar/recusar (admin, se pendente e não expirada). O filtro de status do calendário oferece só pendente, aprovada e expirada |
 | `/reservas` Histórico de reservas | todos | Professor: as próprias (`minhas=true`); admin: todas, abrindo com os cinco status marcados (`status=pendente,expirada,aprovada,recusada,cancelada`). Ao abrir, carrega o **mês corrente**; filtros por período (até 62 dias), sala e status. Mostra status (incluindo "Expirada"), motivo de recusa, botão cancelar e o histórico de mudanças de cada reserva (RF08, RF13) |
-| `/aprovacoes` | admin | Pendentes não expiradas (`GET /api/reservas/pendentes`), com aprovar / recusar (motivo obrigatório) |
-| `/salas` | admin | Listagem, cadastro, edição, inativar/reativar (com aviso de que reservas futuras serão canceladas) |
-| `/usuarios` | admin | Listagem, cadastro, edição (inclui nova senha), inativar/reativar (com o mesmo aviso) |
+| `/aprovacoes` | admin | Pendentes não expiradas (`GET /api/reservas/pendentes`), com aprovar / recusar (motivo obrigatório); filtros no navegador por busca (solicitante ou finalidade), sala, tipo e período |
+| `/salas` | admin | Listagem, cadastro, edição, inativar/reativar (com aviso de que reservas futuras serão canceladas); filtros por busca (nome ou recurso), tipo, situação e capacidade mínima |
+| `/usuarios` | admin | Listagem, cadastro, edição (inclui nova senha), inativar/reativar (com o mesmo aviso); filtros por busca (nome ou e-mail), perfil e situação |
 | `/relatorios` | admin | Seleção de mês e download do PDF (jsPDF + jspdf-autotable) |
 
 - Menu lateral filtrado pelo papel; no celular vira menu hambúrguer.

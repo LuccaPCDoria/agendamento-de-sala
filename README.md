@@ -2,6 +2,10 @@
 
 Projeto Extensionista (Prof. Demétrius) — Acassio, Eduarda, Lucca, Lucas e Rosane.
 
+> **Chegando agora no projeto?** Comece pelo [Guia do projeto](docs/guia-do-projeto.md), que explica tudo em linguagem simples. Este README é a referência técnica.
+
+Sistema publicado: https://agendamento-de-sala.netlify.app
+
 ## O que é
 
 Sem um controle centralizado, a instituição sofre conflitos de horário na reserva de salas. Este sistema web permite que **professores** solicitem reservas e que a **direção** (admin) aprove ou recuse, e **impede automaticamente** duas reservas ativas sobrepostas na mesma sala, mesmo com requisições simultâneas. Todo o histórico fica registrado e cada mudança de status gera um e-mail ao solicitante.
@@ -35,11 +39,13 @@ O navegador nunca lê nem grava tabelas: o Supabase é usado no front apenas par
 server/        API: routes → controllers → services → repositories (+ lib/, middlewares/)
 src/           interface React
 shared/        constantes e esquemas Zod usados pelo front e pela API
-supabase/      migrações SQL (supabase/migrations) e salas de exemplo
+supabase/      migrações SQL (supabase/migrations), salas de exemplo e dados de demonstração
 netlify/       entrada da Netlify Function
 tests/         unit (sem banco) e integracao (banco de testes)
-docs/          roteiro de testes, primeiro admin, especificação
+docs/          guia do projeto, roteiro de testes, primeiro admin, especificação
 ```
+
+Filtros das telas Aprovações, Salas e Usuários: funções puras em `src/filtros/filtrar.ts` (filtragem no navegador, sem chamada extra à API) e a barra comum `src/components/BarraFiltros.tsx`.
 
 ### Onde está cada regra
 
@@ -77,6 +83,12 @@ npx supabase db push --db-url "$DATABASE_URL_MIGRACAO"
 
 `DATABASE_URL_MIGRACAO` é o pooler de sessão (porta 5432). Para o projeto de testes use `TEST_DATABASE_URL_MIGRACAO`.
 
+## Dados de demonstração
+
+`supabase/dados-demo.sql` cria 20 usuários (`@demo.example.com`, senha `Demo@2026`; admins: `mariana.costa@…` e `ricardo.almeida@…`), 8 salas com sufixo "(Demo)" e ~300 reservas com finalidade "[DEMO]" (8 semanas atrás a 5 semanas à frente, todos os status, com histórico). As reservas demo ocupam só as salas demo. `supabase/limpar-dados-demo.sql` remove tudo isso, preservando o histórico de reservas reais e mantendo (com aviso) sala demo que tenha reserva real. Os dois rodam no SQL Editor do Supabase; a carga recusa rodar duas vezes.
+
+E-mails para `@demo.example.com` não são entregues (domínio reservado): ações na tela sobre reservas demo geram avisos de devolução na caixa do `GMAIL_USER`.
+
 ## Primeiro administrador
 
 O cadastro público fica desligado no Supabase; o primeiro admin é criado manualmente. Passo a passo em [docs/primeiro-admin.md](docs/primeiro-admin.md). No Supabase, também desative "Allow new users to sign up" e mantenha "Secure email change" ligado.
@@ -97,7 +109,7 @@ O cadastro público fica desligado no Supabase; o primeiro admin é criado manua
 
 `public/_redirects` mantém `/api/*` antes do fallback da SPA. Notas: o Supabase gratuito pausa após 7 dias sem uso (acesse antes da apresentação); o Gmail exige verificação em duas etapas para gerar a senha de app.
 
-**Região (afeta o RNF001):** o projeto Supabase está em `sa-east-1` (São Paulo). Se o Netlify permitir escolher a região das Functions, escolha a mais próxima (por exemplo São Paulo ou us-east); a distância entre a Function e o banco impacta diretamente o tempo de resposta.
+**Região (afeta o RNF001):** o projeto Supabase de produção (`agendamento-salas-us`) está em `us-east-2` (Ohio); o de testes (`agendamento-salas-teste`) em `sa-east-1` (São Paulo). Se o Netlify permitir escolher a região das Functions, escolha a mais próxima (por exemplo São Paulo ou us-east); a distância entre a Function e o banco impacta diretamente o tempo de resposta.
 
 ## Rastreabilidade dos requisitos
 
@@ -111,7 +123,7 @@ O cadastro público fica desligado no Supabase; o primeiro admin é criado manua
 | RF007 Disponibilidade | Constraint `reservas_sem_conflito` + 409 |
 | RF008 Cancelar | `POST /api/reservas/:id/cancelar` |
 | RF009 Calendário | Tela Calendário (FullCalendar) |
-| RF10 Filtros | Filtros do calendário e da tela Histórico de reservas |
+| RF10 Filtros | Filtros do calendário e da tela Histórico de reservas; busca e filtros em Aprovações, Salas e Usuários |
 | RF11 Aprovação | Tela Aprovações e modal de detalhes |
 | RF12 Notificação | Status na interface + e-mail em toda mudança de status |
 | RF13 Histórico | `historico_reservas` + tela Histórico de reservas |

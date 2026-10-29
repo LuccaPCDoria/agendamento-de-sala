@@ -36,6 +36,7 @@ A regra `/api/*` precisa vir **antes** do fallback da SPA em `public/_redirects`
 | 2.18 Celular (DevTools → modo dispositivo, ou aparelho real) | Calendário abre na visão de lista; menu hambúrguer; "Nova reserva" cria a reserva | | |
 | 2.19 Clicar em uma reserva (dono ou admin) | Modal de detalhes mostra o histórico de mudanças de status; para outro professor o histórico não aparece | | |
 | 2.20 Filtros do calendário (sala, tipo, status) e do Histórico (período, sala, status) | Listas mudam conforme o filtro | | |
+| 2.20b Filtros de Aprovações (busca, sala, tipo, de/até), Salas (busca, tipo, situação, capacidade mínima) e Usuários (busca, perfil, situação) | Lista reduz conforme o filtro; contador "x de y" atualiza; busca sem acento encontra nomes acentuados; "Limpar filtros" restaura; sem resultado mostra "Nenhum resultado para os filtros" | | |
 | 2.21 Relatórios: escolher um mês e baixar o PDF | PDF abre com acentos corretos (ç, ã, é) e as reservas do mês | | |
 | 2.22 Deixar o sistema parado ~10 min (função ociosa) e criar uma reserva | E-mail chega normalmente (envio não depende de conexão antiga) | | |
 
