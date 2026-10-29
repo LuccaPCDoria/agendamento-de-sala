@@ -37,6 +37,14 @@ describe('ListaReservas', () => {
     expect(screen.getByText('Pendente')).toBeInTheDocument();
   });
 
+  it('botão da linha tem anel de foco e o li não corta com overflow-hidden', () => {
+    montar([base]);
+    const botao = screen.getByRole('button');
+    expect(botao).toHaveClass('focus-visible:ring-2', 'focus-visible:ring-primaria');
+    expect(botao).not.toHaveClass('ring-inset');
+    expect(botao.closest('li')).not.toHaveClass('overflow-hidden');
+  });
+
   it('recusada mostra "Motivo: …" na linha', () => {
     montar([{ ...base, status: 'recusada', motivoRecusa: 'Sala em manutenção' }]);
     expect(screen.getByText('Motivo: Sala em manutenção')).toBeInTheDocument();

@@ -59,7 +59,7 @@ export default function Reservas() {
             <legend className="sr-only">Filtrar por status</legend>
             {TODOS_STATUS.map((st) => (
               <label key={st} className="flex items-center gap-1.5">
-                <input type="checkbox" className="accent-primaria" checked={status.includes(st)} onChange={() => alternarStatus(st)} />
+                <input type="checkbox" checked={status.includes(st)} onChange={() => alternarStatus(st)} />
                 {ROTULO_STATUS[st]}
               </label>
             ))}

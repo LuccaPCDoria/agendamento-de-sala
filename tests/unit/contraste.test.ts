@@ -41,7 +41,7 @@ const PARES: [string, string, number][] = [
   ['primaria-botao-texto','primaria-botao',4.5], ['coral-texto','coral',4.5], ['coral-forte','coral-suave',4.5], ['coral-forte','superficie',4.5],
   ['erro','superficie',4.5], ['erro','fundo',4.5], ['erro-texto','erro',4.5], ['erro-forte','erro-suave',4.5], ['erro-forte','superficie',4.5],
   ['neutro-forte','neutro-suave',4.5], ['neutro-forte','superficie',4.5], ['evento-aprovada-texto','evento-aprovada',4.5], ['texto','evento-expirada',4.5],
-  ['borda-campo','superficie',3], ['borda-campo','superficie-2',3], ['primaria','superficie',3], ['primaria','fundo',3],
+  ['erro-forte','fundo',4.5], ['primaria-forte','fundo',4.5], ['borda-campo','fundo',3], ['borda-campo','superficie',3], ['borda-campo','superficie-2',3], ['primaria','superficie',3], ['primaria','fundo',3],
   ['neutro-forte','evento-expirada',3], ['coral-forte','superficie',3], ['evento-aprovada','superficie',3],
 ];
 

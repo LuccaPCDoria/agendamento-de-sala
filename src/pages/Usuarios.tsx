@@ -41,7 +41,7 @@ export default function Usuarios() {
   return (
     <div className="space-y-4">
       <Titulo acao={<Botao icone={<Plus className="h-4 w-4" aria-hidden="true" />} onClick={() => setAberto(true)}>Novo usuário</Botao>}>Usuários</Titulo>
-      {isLoading && <p>Carregando...</p>}
+      {isLoading && <p className="text-suave">Carregando...</p>}
       {error && <p role="alert" className="text-erro">{error.message}</p>}
       {erroAcao && <p role="alert" className="text-erro">{erroAcao}</p>}
       {data && data.length === 0 && <Cartao><EstadoVazio icone={Users} mensagem="Nenhum usuário cadastrado" /></Cartao>}

@@ -35,7 +35,7 @@ export default function Layout() {
   return (
     <div className="min-h-screen bg-fundo font-texto text-texto md:flex">
       <VigiaInatividade />
-      <header className="flex items-center justify-between border-b bg-superficie px-4 py-3 md:hidden">
+      <header className="relative z-40 flex items-center justify-between border-b bg-superficie px-4 py-3 md:hidden">
         <Logo tamanho={32} />
         <div className="flex items-center gap-1">
           <BotaoTema />

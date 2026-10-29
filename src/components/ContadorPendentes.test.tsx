@@ -27,6 +27,13 @@ describe('ContadorPendentes', () => {
     montar();
     expect(await screen.findByText('3')).toBeInTheDocument();
   });
+  it('não usa aria-label e expõe "N pendentes" só para leitores de tela', async () => {
+    apiMock.mockResolvedValue([{ id: 1 }, { id: 2 }]);
+    const { container } = montar();
+    const sr = await screen.findByText('2 pendentes');
+    expect(sr).toHaveClass('sr-only');
+    expect(container.querySelector('[aria-label]')).toBeNull();
+  });
   it('fica oculto com zero', async () => {
     apiMock.mockResolvedValue([]);
     const { container } = montar();

@@ -1,6 +1,7 @@
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
 import { Botao } from '../ui/Botao';
+import { Titulo } from '../ui/Titulo';
 
 export default function RotaProtegida({ somenteAdmin = false }: { somenteAdmin?: boolean }) {
   const { perfil, carregando, erroCarga, recarregar } = useAuth();
@@ -18,9 +19,9 @@ export default function RotaProtegida({ somenteAdmin = false }: { somenteAdmin?:
   if (!perfil) return <Navigate to="/login" replace />;
   if (somenteAdmin && perfil.papel !== 'admin') {
     return (
-      <div className="min-h-screen bg-fundo p-6 font-texto text-texto">
-        <h1 className="font-titulo text-xl font-semibold">Acesso negado</h1>
-        <p className="mt-2 text-suave">Você não tem permissão para ver esta página.</p>
+      <div className="space-y-2 font-texto text-texto">
+        <Titulo>Acesso negado</Titulo>
+        <p className="text-suave">Você não tem permissão para ver esta página.</p>
       </div>
     );
   }

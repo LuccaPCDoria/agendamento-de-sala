@@ -25,10 +25,10 @@ export default function ListaReservas({ reservas, vazio }: Props) {
     <>
       <ul className="space-y-2">
         {reservas.map((r) => (
-          <Cartao as="li" key={r.id} className="overflow-hidden hover:bg-superficie-2">
+          <Cartao as="li" key={r.id} className="hover:bg-superficie-2">
             <button type="button" onClick={() => setAberta(r)}
               className="flex w-full items-stretch gap-3 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primaria focus-visible:ring-offset-2 focus-visible:ring-offset-superficie">
-              <span aria-hidden="true" className={`w-[5px] shrink-0 ${r.expirada ? BARRA.cancelada : BARRA[r.status]}`} />
+              <span aria-hidden="true" className={`w-[5px] shrink-0 rounded-l-2xl ${r.expirada ? BARRA.cancelada : BARRA[r.status]}`} />
               <span className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-2 py-3 pr-3">
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-bold text-texto">{r.salaNome}</span>
@@ -36,7 +36,7 @@ export default function ListaReservas({ reservas, vazio }: Props) {
                   <span className="block truncate text-suave">{r.solicitanteNome}</span>
                   <Hora className="block text-xs text-suave">{formatarPeriodo(r.inicio, r.fim)}</Hora>
                   {r.status === 'recusada' && r.motivoRecusa && (
-                    <span className="mt-1 block line-clamp-2 break-words text-erro-forte">Motivo: {r.motivoRecusa}</span>
+                    <span className="mt-1 line-clamp-2 break-words text-erro-forte">Motivo: {r.motivoRecusa}</span>
                   )}
                 </span>
                 <SeloStatus status={r.status} expirada={r.expirada} />

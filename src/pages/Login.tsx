@@ -46,8 +46,8 @@ export default function Login() {
                 i === 1 || i === 6 || i === 11
                   ? 'bg-coral'
                   : i === 3 || i === 4 || i === 9
-                    ? 'bg-primaria-botao-texto/80'
-                    : 'bg-primaria-botao-texto/20'
+                    ? 'bg-primaria-botao-texto/80 dark:bg-texto/80'
+                    : 'bg-primaria-botao-texto/20 dark:bg-texto/20'
               }`}
             />
           ))}

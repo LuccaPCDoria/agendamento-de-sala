@@ -41,8 +41,8 @@ function conteudoEvento(arg: EventContentArg) {
       <div className="flex min-w-0 items-center gap-1">
         <span className="fc-daygrid-event-dot" />
         {icone}
-        <Hora className="font-bold">{arg.timeText}</Hora>
-        <span className="truncate">{arg.event.title}</span>
+        <Hora className="font-bold whitespace-nowrap">{arg.timeText}</Hora>
+        <span className="min-w-0 truncate">{arg.event.title}</span>
       </div>
     );
   }
@@ -55,10 +55,12 @@ function conteudoEvento(arg: EventContentArg) {
     );
   }
   return (
-    <div className="flex min-w-0 items-center gap-1">
-      {icone}
-      <Hora className="font-bold">{arg.timeText}</Hora>
-      <span className="truncate">{arg.event.title}</span>
+    <div className="flex flex-col gap-0.5 overflow-hidden p-0.5 text-xs">
+      <div className="flex items-center gap-1">
+        {icone}
+        <Hora className="font-bold whitespace-nowrap">{arg.timeText}</Hora>
+      </div>
+      <span className="line-clamp-2 break-words">{arg.event.title}</span>
     </div>
   );
 }
@@ -134,7 +136,7 @@ export default function Calendario() {
   }
 
   return (
-    <div>
+    <div className="space-y-4">
       <Titulo
         subtitulo="Veja a ocupação e reserve em poucos cliques"
         acao={<Botao variante="principal" icone={<Plus size={16} aria-hidden="true" />} onClick={() => setSelecao({})}>Nova reserva</Botao>}
@@ -142,7 +144,7 @@ export default function Calendario() {
         Calendário
       </Titulo>
 
-      <Cartao className="mb-4 flex flex-wrap items-end gap-3 p-4">
+      <Cartao className="flex flex-wrap items-end gap-3 p-4">
         <CampoSelecao rotulo="Filtrar por sala" rotuloOculto value={salaId} onChange={(e) => alterarSala(e.target.value)}>
           <option value="">Todas as salas</option>
           {salas.map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}
