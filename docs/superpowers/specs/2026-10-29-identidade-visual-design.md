@@ -1,8 +1,8 @@
 # Identidade Visual — Especificação de Design
 
-- **Data:** 2026-10-29
+- **Data:** 2026-10-29 (revisada após revisão técnica)
 - **Sistema:** Agendamento de Salas (spec funcional: `docs/superpowers/specs/2026-10-27-agendamento-salas-design.md`)
-- **Escopo:** somente aparência do front-end (`src/`). Nenhuma regra de negócio, rota da API, esquema de banco ou comportamento muda. E-mails e relatório PDF ficam como estão.
+- **Escopo:** somente aparência do front-end (`src/`, `index.html`, `public/`). Nenhuma regra de negócio, rota da API, esquema de banco ou comportamento muda; nenhuma chamada nova à API é feita por quem não a fazia antes. E-mails e relatório PDF ficam como estão.
 
 ## 1. Objetivo e critérios de sucesso
 
@@ -12,10 +12,10 @@
 
 **Critérios de sucesso:**
 1. Todas as telas (login, menu, calendário, listas, formulários, modais) usam a nova paleta, tipografia, formas, ícones e logo.
-2. Modo escuro automático (segue o sistema) com botão para trocar; sem "piscar" claro ao abrir no escuro.
-3. Pares de cor principais atendem WCAG AA (≥ 4,5:1), verificado por teste automático.
+2. Modo escuro automático (segue o sistema) com botão para trocar; sem "piscar" claro ao abrir no escuro; controles nativos (data, hora, mês, select, checkbox, barras de rolagem) também ficam escuros.
+3. Todo par texto/fundo usado na interface atinge **WCAG AA 4,5:1**, e bordas de campos, anel de foco e amostras de cor atingem **3:1** — verificado por teste automático (§8).
 4. Nenhuma tela rola na horizontal em 390 px; desktop (1280 px) preservado.
-5. Todos os testes existentes continuam passando (ajustes só em asserções de texto/cor antigas).
+5. Todos os testes existentes continuam passando (ajustes só em asserções de texto/cor antigas, listados no relatório).
 
 ## 2. Decisões de identidade (aprovadas)
 
@@ -33,99 +33,135 @@
 
 ## 3. Tokens de design
 
-### 3.1 Cores
+### 3.1 Formato do arquivo de tokens
 
-Definidas em `src/tema/tokens.css` como trios RGB (ex.: `--cor-primaria: 15 159 143;`), em `:root` (claro) e `.dark` (escuro), e expostas no Tailwind como `rgb(var(--cor-x) / <alpha-value>)`.
+`src/tema/tokens.css` contém **exatamente dois blocos**: `:root {` (claro) e `.dark {` (escuro). Cada token de cor é **uma declaração por linha** no formato `--cor-<nome>: R G B;` (trio decimal separado por espaços). Os dois blocos têm o mesmo conjunto de nomes. No Tailwind cada token é exposto como `rgb(var(--cor-<nome>) / <alpha-value>)` com o nome `<nome>` (ex.: `bg-superficie`, `text-suave`).
 
-| Token (Tailwind) | Claro | Escuro | Uso |
+Os blocos também declaram `color-scheme: light;` (`:root`) e `color-scheme: dark;` (`.dark`), e `accent-color: rgb(var(--cor-primaria-botao));` no `:root` (vale para os dois temas, para checkboxes e controles nativos).
+
+### 3.2 Cores
+
+| Token | Claro | Escuro | Uso |
 |---|---|---|---|
 | `fundo` | `#F3FAF8` | `#0B1413` | fundo da página |
 | `superficie` | `#FFFFFF` | `#132220` | cartões, menu, modais |
-| `superficie-2` | `#E6F4F1` | `#1A2D2A` | campos, hover, chips |
-| `borda` | `#D7ECE8` | `#22403B` | bordas e divisórias |
+| `superficie-2` | `#E6F4F1` | `#1A2D2A` | fundo de campos, hover de linha, chips |
+| `borda` | `#D7ECE8` | `#22403B` | divisórias e bordas decorativas (nunca para delimitar campo) |
+| `borda-campo` | `#728B86` | `#668380` | borda de `Campo`, `Selecao`, checkbox e botão secundário |
 | `texto` | `#10302C` | `#E3F1EE` | texto principal |
-| `suave` | `#5B7470` | `#8FA9A4` | texto secundário |
-| `primaria` | `#0F9F8F` | `#2BC4B2` | destaques, ícones, item ativo, aprovada |
-| `primaria-botao` | `#0B7A6E` | `#2BC4B2` | fundo de botão principal |
+| `suave` | `#4F6864` | `#8FA9A4` | texto secundário |
+| `primaria` | `#0F9F8F` | `#2BC4B2` | **somente** elementos não-textuais: ícones, anel de foco, barras laterais, detalhes do logo |
+| `primaria-forte` | `#08695F` | `#5FD8C9` | texto em destaque/links e texto sobre `primaria-suave` |
+| `primaria-suave` | `#DFF4F0` | `#123A35` | fundo do item ativo do menu, selo aprovada, pílula ativa |
+| `primaria-botao` | `#0B7A6E` | `#2BC4B2` | fundo do botão principal |
 | `primaria-botao-texto` | `#FFFFFF` | `#062420` | texto do botão principal |
-| `primaria-suave` | `#DFF4F0` | `#123A35` | fundo de selo/menu ativo |
-| `primaria-forte` | `#08695F` | `#5FD8C9` | texto sobre `primaria-suave` |
-| `coral` | `#FF7A59` | `#FF8E70` | pendente, contador, detalhes do logo |
+| `coral` | `#FF7A59` | `#FF8E70` | fundo do contador e do evento pendente, detalhes do logo |
+| `coral-texto` | `#10302C` | `#062420` | texto sobre `coral` |
 | `coral-suave` | `#FFE6DE` | `#3A211A` | fundo do selo pendente |
-| `coral-forte` | `#B4472B` | `#FF9E85` | texto do selo pendente |
-| `erro` | `#D93F3F` | `#FF6B6B` | erros, recusada |
+| `coral-forte` | `#B4472B` | `#FF9E85` | texto do selo pendente, mensagem "Sessão expirada" |
+| `erro` | `#C53030` | `#FF6B6B` | texto de erro (`role="alert"`), fundo do botão perigo, barra lateral de recusada |
+| `erro-texto` | `#FFFFFF` | `#2A0E0E` | texto do botão perigo |
 | `erro-suave` | `#FDE3E3` | `#3A1B1B` | fundo do selo recusada |
-| `erro-forte` | `#B42E2E` | `#FF8A8A` | texto do selo recusada / motivo |
+| `erro-forte` | `#B42E2E` | `#FF8A8A` | texto do selo recusada e do motivo da recusa |
 | `neutro-suave` | `#E9EEED` | `#1E2A28` | fundo dos selos cancelada/expirada |
-| `neutro-forte` | `#4A605C` | `#A3BAB5` | texto dos selos cancelada/expirada |
-| `evento-expirada` | `#C4D3D0` | `#2E403C` | evento expirado no calendário |
+| `neutro-forte` | `#4A605C` | `#A3BAB5` | texto dos selos cancelada/expirada, borda tracejada da expirada, barra lateral de cancelada/expirada |
+| `evento-aprovada` | `#0B7A6E` | `#2BC4B2` | fundo do evento aprovado no calendário |
+| `evento-aprovada-texto` | `#FFFFFF` | `#062420` | texto do evento aprovado |
+| `evento-expirada` | `#C4D3D0` | `#2E403C` | fundo do evento expirado (com borda tracejada `neutro-forte`) |
 
-**Contraste:** o verde `primaria` (#0F9F8F) com texto branco não atinge 4,5:1; por isso botões usam `primaria-botao`. Na revisão da spec, dois pares da prévia ficaram abaixo de 4,5:1 e foram escurecidos: texto do selo aprovada no claro (`primaria-forte` → `#08695F`) e texto dos selos cancelada/expirada (novo token `neutro-forte`). O teste de contraste (§8) é a fonte de verdade: se algum par falhar, o token é ajustado até passar, mantendo o tom.
+Regras:
+- **`primaria` nunca é cor de texto** (3,29:1 sobre branco). Texto em destaque usa `primaria-forte`.
+- **Anel de foco:** `ring-2 ring-primaria ring-offset-2 ring-offset-superficie`, sempre externo ao elemento (nunca `ring-inset`).
+- Evento pendente usa `coral` + `coral-texto`.
 
-### 3.2 Selos de status
+### 3.3 Status (selos, barras laterais e eventos)
 
-| Status | Fundo | Texto | Observação |
+| Status | Selo (fundo / texto) | Barra lateral da linha | Evento no calendário (fundo / texto) |
 |---|---|---|---|
-| Aprovada | `primaria-suave` | `primaria-forte` | |
-| Pendente | `coral-suave` | `coral-forte` | |
-| Recusada | `erro-suave` | `erro-forte` | |
-| Cancelada | `neutro-suave` | `neutro-forte` | |
-| Expirada | `neutro-suave` | `neutro-forte` | borda tracejada |
+| Aprovada | `primaria-suave` / `primaria-forte` | `primaria` | `evento-aprovada` / `evento-aprovada-texto` |
+| Pendente | `coral-suave` / `coral-forte` | `coral` | `coral` / `coral-texto` |
+| Recusada | `erro-suave` / `erro-forte` | `erro` | — (não aparece no calendário) |
+| Cancelada | `neutro-suave` / `neutro-forte` | `neutro-forte` | — |
+| Expirada | `neutro-suave` / `neutro-forte`, borda tracejada `neutro-forte` | `neutro-forte` | `evento-expirada` / `texto`, borda tracejada `neutro-forte` |
 
-Eventos no calendário: aprovada = `primaria`, pendente = `coral`, expirada = `evento-expirada` (texto `texto`).
+### 3.4 Tipografia
 
-### 3.3 Tipografia
+Pacotes `@fontsource/unbounded`, `@fontsource/manrope`, `@fontsource/space-mono`, importados **por peso** (`@fontsource/<fonte>/<peso>.css`) em `src/main.tsx`; cada arquivo já inclui latin/latin-ext por `unicode-range` (acentos do português) e usa `font-display: swap`. Tailwind: `font-titulo` (`Unbounded, system-ui, sans-serif`), `font-texto` (`Manrope, system-ui, sans-serif`, padrão do `body`), `font-numero` (`"Space Mono", ui-monospace, monospace`).
 
-Pacotes `@fontsource/unbounded`, `@fontsource/manrope`, `@fontsource/space-mono` (servidos pelo próprio site, sem Google Fonts). Tailwind: `font-titulo`, `font-texto` (padrão do `body`), `font-numero`.
-
-| Fonte | Onde | Pesos |
+| Fonte | Peso | Onde |
 |---|---|---|
-| Unbounded | títulos de página, títulos de modal, nome no login/menu | 600, 800 |
-| Manrope | todo o resto (texto, rótulos, campos, botões, tabelas, menu, mensagens, título da semana do FullCalendar) | 400, 500, 700, 800 |
-| Space Mono | horários, datas numéricas, números do relatório e contadores | 400, 700 |
+| Unbounded | 800 | títulos de página (`Titulo`), "Agendamento de Salas" no login e no menu |
+| Unbounded | 600 | títulos de modal |
+| Manrope | 400 | texto corrido, campos |
+| Manrope | 500 | rótulos, itens de menu inativos |
+| Manrope | 700 | botões, selos, item de menu ativo, cabeçalhos de tabela, título do período do FullCalendar |
+| Space Mono | 400 | datas e horários em listas e eixo do calendário (`Hora`) |
+| Space Mono | 700 | horário dentro do evento do calendário, contador de pendentes |
 
-Regra: Unbounded só em textos curtos (≤ ~25 caracteres); o título do período do FullCalendar usa Manrope.
+Unbounded só em textos curtos (≤ ~25 caracteres).
 
-### 3.4 Formas e sombras
+### 3.5 Formas, sombras e camadas
 
-- Raios: cartões e modais `16px`; campos e selects `12px`; botões e selos em pílula.
-- Sombra (claro): `0 4px 14px rgba(15,159,143,.08)` em cartões; escuro: sem sombra, só borda `borda`.
+- Raios: cartões e modais `16px`; campos e selects `12px`; botões, selos e chips em pílula.
+- Sombra (claro): cartões `0 4px 14px rgba(15,159,143,.08)`; modais `0 20px 50px rgba(16,48,44,.18)`. No escuro: `dark:shadow-none` e borda `borda`.
+- Overlay do `Modal`: `bg-black/40` no claro, `bg-black/60` no escuro.
+- Camadas: menu móvel `z-40` (com backdrop `z-30`), `Modal` `z-50`.
 
 ## 4. Modo escuro
 
-- `src/tema/useTema.ts` expõe `{ tema: 'claro' | 'escuro', alternar(): void }`.
-  - Preferência salva em `localStorage` na chave `agendamento:tema` (`'claro' | 'escuro'`); todo acesso em try/catch.
-  - Sem preferência salva → segue `prefers-color-scheme` e acompanha mudanças do sistema.
-  - Aplica/remove a classe `dark` no `<html>`.
-- `index.html` ganha um script inline mínimo no `<head>` que aplica `dark` antes da renderização (mesma regra), evitando o "flash" claro.
-- `BotaoTema` (ícones sol/lua do lucide) fica no rodapé do menu lateral e no cabeçalho do celular; `aria-label` "Ativar modo escuro" / "Ativar modo claro".
+- **Módulo único `src/tema/tema.ts`:** exporta `CHAVE_TEMA = 'agendamento:tema'`, `resolverTema(salvo: string | null, prefereEscuro: boolean): 'claro' | 'escuro'` (salvo `'claro'|'escuro'` vence; senão segue `prefereEscuro`) e uma pequena *store* (`obterTema()`, `assinar(cb)`, `alternar()`) que aplica/remove a classe `dark` no `<html>`.
+- **`useTema()`** usa `useSyncExternalStore` sobre essa store e retorna `{ tema, alternar }` — todos os `BotaoTema` montados ao mesmo tempo ficam sincronizados.
+- Sem preferência salva, a store escuta `matchMedia('(prefers-color-scheme: dark)')` e acompanha mudanças do sistema. `alternar()` grava a escolha explícita em `localStorage` (try/catch); **não há opção de voltar ao automático** (decisão consciente — YAGNI).
+- **Script pré-pintura** inline no `<head>` do `index.html` (antes de qualquer outro script) replica a mesma regra com a mesma chave e o mesmo media query, com try/catch próprio. Um teste (§8) garante que o `index.html` contém `agendamento:tema` e `(prefers-color-scheme: dark)`. Não há CSP configurada hoje no Netlify; se uma for adicionada, o script precisará de hash.
+- **`BotaoTema`** (ícones `Sun`/`Moon` do lucide) fica no rodapé do menu lateral e no cabeçalho do celular; `aria-label` "Ativar modo escuro" / "Ativar modo claro". **A tela de login não tem o botão** — segue o tema efetivo.
 - Tailwind: `darkMode: 'class'`.
 
 ## 5. Componentes base (`src/ui/`)
 
 | Componente | Responsabilidade |
 |---|---|
-| `Botao` | variantes `principal`, `secundario` (contorno), `perigo`, `discreto`; prop `carregando` (desabilita e mostra texto de carregamento); pílula |
+| `Botao` | variantes `principal` (`primaria-botao`/`primaria-botao-texto`), `secundario` (contorno `borda-campo`, texto `primaria-forte`), `perigo` (`erro`/`erro-texto`), `discreto` (sem fundo, texto `suave`); props `carregando: boolean` e `textoCarregando?: string` (quando carregando: desabilitado e mostra `textoCarregando`, ou o próprio conteúdo se ausente); pílula; anel de foco §3.2 |
 | `Cartao` | superfície com raio 16, borda/sombra conforme tema |
-| `Campo` | rótulo + input + mensagem de erro (`role="alert"`), estilos de foco com anel `primaria` |
+| `Campo` | rótulo + input + mensagem de erro (`role="alert"`, cor `erro`); fundo `superficie-2`, borda `borda-campo`, anel de foco §3.2 |
 | `Selecao` | rótulo + select com o mesmo visual do `Campo` |
-| `SeloStatus` | recebe `status` e `expirada` e aplica a tabela 3.2 com o rótulo de `ROTULO_STATUS` |
-| `Logo` | SVG do "calendário confirmado"; props `tamanho` e `comNome` |
-| `Titulo` | `h1` em Unbounded + subtítulo opcional em `suave` |
-| `Hora` | `<span>` em Space Mono para horários e datas numéricas |
-| `EstadoVazio` | ícone + mensagem amigável para listas vazias |
+| `SeloStatus` | recebe `status` e `expirada` e aplica a tabela 3.3 com o rótulo de `ROTULO_STATUS` |
+| `Logo` | SVG do "calendário confirmado"; props `tamanho` e `comNome`; no escuro usa `primaria`/`coral` do tema escuro |
+| `Titulo` | `h1` em Unbounded 800 + subtítulo opcional em `suave` |
+| `Hora` | `<span>` em Space Mono 400 para horários e datas numéricas |
+| `EstadoVazio` | ícone lucide + mensagem amigável para listas vazias |
 
-O `Modal` existente mantém a lógica e recebe o visual novo (título em `Titulo`, ações no rodapé). O favicon passa a ser o `Logo` (SVG em `public/`).
+O `Modal` existente mantém a lógica (Escape, foco, rótulo) e recebe o visual novo (título em Unbounded 600, ações no rodapé, overlay e sombra §3.5). O favicon passa a ser o `Logo` em SVG (`public/favicon.svg`).
 
 ## 6. Telas
 
-- **Layout:** menu lateral `superficie` com `Logo comNome`, itens com ícones lucide (Calendário, Minhas reservas, Aprovações, Salas, Usuários, Relatórios), item ativo em pílula `primaria-suave`. "Aprovações" mostra um contador coral com o número de pendentes (apenas admin; usa `usePendentes()` já existente; oculto quando zero). Rodapé: nome, selo "Direção"/"Professor", `BotaoTema`, "Sair". Celular: cabeçalho com logo, `BotaoTema` e botão de menu; o menu abre sobre o conteúdo.
-- **Login:** painel dividido — à esquerda painel em gradiente menta com `Logo`, a frase "Reserve a sala certa, sem conflito." e uma grade de calendário decorativa (CSS); à direita o formulário em `Cartao`. Em ≤ 640 px o painel vira faixa no topo. Mensagens de erro e "Sessão expirada" mantidas.
-- **Calendário:** `Titulo` "Calendário" + subtítulo "Veja a ocupação e reserve em poucos cliques"; botão "Nova reserva" (`Botao principal`); filtros num `Cartao`; legenda de cores (Aprovada, Pendente, Expirada); FullCalendar dentro de `Cartao`, com as variáveis `--fc-*` mapeadas para os tokens (fundo, bordas, texto, botões da toolbar, destaque do dia atual, seleção) e horários do eixo em Space Mono.
-- **Minhas reservas / Aprovações:** cada reserva vira um `Cartao` em linha com barra lateral na cor do status, sala e finalidade, data/horário com `Hora`, `SeloStatus` e, quando recusada, o motivo visível na própria linha; clique abre o `ModalDetalhes` como hoje. Lista vazia → `EstadoVazio`.
-- **Salas / Usuários:** tabela dentro de `Cartao` com hover de linha; recursos como chips `superficie-2`; situação como selo (Ativa/Ativo = `primaria-suave` + `primaria-forte`; Inativa/Inativo = `neutro-suave` + `neutro-forte`). Regras responsivas atuais mantidas.
-- **Relatórios:** `Cartao` com seletor de mês e `Botao` "Baixar PDF".
-- **Modais (`ModalNovaReserva`, `ModalDetalhes`, formulários):** usam `Campo`, `Selecao`, `Botao`, `SeloStatus`, `Hora`.
+### 6.1 Layout
+- **Desktop (≥ 768 px):** menu lateral fixo `superficie` com `Logo comNome`, itens com ícones lucide (`CalendarDays` Calendário, `ListChecks` Minhas reservas, `BadgeCheck` Aprovações, `DoorOpen` Salas, `Users` Usuários, `FileText` Relatórios). Item ativo: pílula `primaria-suave` com texto `primaria-forte` (Manrope 700); inativos: texto `suave` (Manrope 500).
+- **Contador de pendentes:** componente `ContadorPendentes`, **renderizado só quando `perfil.papel === 'admin'`** (o professor nunca chama `/reservas/pendentes`). Usa `usePendentes()` existente (cache `['pendentes']`); mostra o número em pílula `coral`/`coral-texto` (Space Mono 700) ao lado de "Aprovações"; oculto quando zero ou carregando.
+- **Rodapé do menu:** nome, selo "Direção" (`primaria-suave`/`primaria-forte`) ou "Professor" (`neutro-suave`/`neutro-forte`), `BotaoTema`, botão "Sair" (`discreto`).
+- **Celular (< 768 px):** cabeçalho `superficie` com `Logo` (sem nome), `BotaoTema` e botão de menu (`Menu`/`X`). O menu abre como **painel sobreposto** à esquerda (`z-40`) com backdrop (`z-30`, `bg-black/40`); fecha ao clicar no backdrop, ao escolher um item ou com Esc.
+
+### 6.2 Login
+- **≥ 768 px:** duas colunas. Esquerda: painel com `linear-gradient(135deg, #0B7A6E, #08695F)` no claro e `linear-gradient(135deg, #123A35, #0B1413)` no escuro; texto `#FFFFFF` no claro e `texto` no escuro; `Logo` (versão branca no claro), frase "Reserve a sala certa, sem conflito." em Unbounded 800 e "Agendamento de Salas" em Manrope 500; grade decorativa de 4×3 quadradinhos arredondados (CSS puro, `aria-hidden`), alguns em `coral` e branco. Direita: formulário em `Cartao`.
+- **< 768 px:** o painel vira faixa no topo com 140 px de altura, só `Logo` + frase; a grade decorativa some.
+- Mensagens: erro de login em `erro`; "Sessão expirada. Entre novamente." em `coral-forte`. Textos existentes mantidos.
+
+### 6.3 Calendário
+- `Titulo` "Calendário" + subtítulo "Veja a ocupação e reserve em poucos cliques"; botão "Nova reserva" (`Botao principal`, ícone `Plus`).
+- Filtros num `Cartao`: selects de sala e tipo (`Selecao`) e o **fieldset de status existente, que passa a ser a legenda**: cada checkbox (Pendente, Aprovada, Expirada) ganha ao lado uma amostra 12×12 com a cor do evento (§3.3; amostra da expirada com borda tracejada). Comportamento dos filtros inalterado.
+- FullCalendar dentro de `Cartao`. Variáveis declaradas no seletor `.fc` (e `.dark .fc`) em `src/index.css`: `--fc-page-bg-color: rgb(var(--cor-superficie))`, `--fc-border-color: rgb(var(--cor-borda))`, `--fc-neutral-bg-color: rgb(var(--cor-superficie-2))`, `--fc-neutral-text-color: rgb(var(--cor-suave))`, `--fc-button-text-color: rgb(var(--cor-primaria-forte))`, `--fc-button-bg-color: rgb(var(--cor-superficie))`, `--fc-button-border-color: rgb(var(--cor-borda-campo))`, `--fc-button-hover-bg-color: rgb(var(--cor-superficie-2))`, `--fc-button-hover-border-color: rgb(var(--cor-borda-campo))`, `--fc-button-active-bg-color: rgb(var(--cor-primaria-suave))`, `--fc-button-active-border-color: rgb(var(--cor-primaria))`, `--fc-today-bg-color: rgb(var(--cor-primaria) / .08)`, `--fc-highlight-color: rgb(var(--cor-primaria) / .18)`, `--fc-now-indicator-color: rgb(var(--cor-coral))`, `--fc-non-business-color: rgb(var(--cor-superficie-2) / .6)`, `--fc-list-event-hover-bg-color: rgb(var(--cor-superficie-2))`. Override de `.fc .fc-button:focus { box-shadow }` para o anel §3.2 e `color: rgb(var(--cor-texto))` em `.fc`. Título do período em Manrope 700; eixo de horas em Space Mono 400.
+- **Cores dos eventos por classe:** `reservaParaEvento` deixa de definir `backgroundColor`/`borderColor` e passa a retornar `classNames: ['evento-aprovada' | 'evento-pendente' | 'evento-expirada']`; o CSS dessas classes (em `src/index.css`) define fundo, borda, texto e o ponto do mês/lista (`.fc-daygrid-event-dot`, `.fc-list-event-dot`) a partir da tabela 3.3.
+
+### 6.4 Minhas reservas / Aprovações (`ListaReservas`)
+- Cada reserva vira uma linha-cartão (`Cartao`, hover `superficie-2`) com: barra lateral de 5 px na cor do status (§3.3), **sala e finalidade** (Manrope 700 / 400), **solicitante** (`suave`, mantido como hoje), data e horário com `Hora`, `SeloStatus` e, quando recusada, "Motivo: …" em `erro-forte` na própria linha. Clique abre o `ModalDetalhes` como hoje.
+- Lista vazia → `EstadoVazio` ("Nenhuma reserva neste período" / "Nenhuma solicitação pendente").
+- Página Reservas: alternador "Todas as reservas / Minhas" (admin) vira grupo de pílulas — ativa `primaria-suave`/`primaria-forte`, inativa `discreto` — mantendo `aria-pressed`. `SeletorPeriodo`: botões anterior/próximo `secundario` com ícones `ChevronLeft`/`ChevronRight` e o mês em Manrope 700. Select de sala e checkboxes de status com `Selecao` e `accent-color`.
+
+### 6.5 Salas / Usuários
+Tabela dentro de `Cartao` (cabeçalho Manrope 700 `suave`, hover de linha `superficie-2`); recursos como chips `superficie-2`/`texto`; situação como selo (Ativa/Ativo = `primaria-suave`/`primaria-forte`; Inativa/Inativo = `neutro-suave`/`neutro-forte`). Regras responsivas atuais mantidas (colunas ocultas em telas pequenas, `overflow-x-auto`).
+
+### 6.6 Relatórios e modais
+- Relatórios: `Cartao` com `Campo` de mês e `Botao principal` "Baixar PDF" (ícone `Download`, `textoCarregando` "Gerando…").
+- `ModalNovaReserva`, `ModalDetalhes`, `FormSala`, `FormUsuario`: usam `Campo`, `Selecao`, `Botao`, `SeloStatus`, `Hora`. Os textos de carregamento existentes ("Enviando…", "Entrando…" etc.) são preservados via `textoCarregando`.
 
 ## 7. Dependências novas
 
@@ -134,15 +170,20 @@ O `Modal` existente mantém a lógica e recebe o visual novo (título em `Titulo
 ## 8. Testes e verificação
 
 **Novos testes (Vitest):**
-- `useTema`: segue o sistema sem preferência; `alternar()` troca e persiste; reage à mudança do sistema quando não há preferência; funciona se `localStorage` lançar erro.
+- `tema.ts` / `useTema`: `resolverTema` (salvo vence; sem salvo segue o sistema); a store aplica/remove `dark` no `<html>`; `alternar()` troca e persiste; reage à mudança do sistema quando não há preferência; funciona se `localStorage` lançar erro; dois `BotaoTema` montados ficam sincronizados.
+- `index.html`: contém `agendamento:tema` e `(prefers-color-scheme: dark)`.
 - `BotaoTema`: `aria-label` correto em cada tema; clique alterna.
 - `SeloStatus`: rótulo e classes de cada status, incluindo expirada.
-- **Contraste:** `tests/unit/contraste.test.ts` lê os valores de `tokens.css` e verifica ≥ 4,5:1 para, em cada tema: `texto`/`fundo`, `texto`/`superficie`, `suave`/`superficie`, `primaria-botao-texto`/`primaria-botao`, e texto/fundo de cada selo da tabela 3.2.
-- `eventos.ts`: cores dos eventos usando os tokens.
+- `ContadorPendentes`: não renderiza para professor (e não chama a API); mostra o número para admin; oculto com zero.
+- `eventos.ts`: `classNames` corretos para aprovada, pendente e expirada (sem `backgroundColor`).
+- **Contraste — `tests/unit/contraste.test.ts`:** lê `src/tema/tokens.css`, extrai os dois blocos no formato §3.1, falha se algum token existir num bloco e faltar no outro, e verifica, **para cada tema**, a tabela de pares `[frente, fundo, mínimo]`:
+  - 4,5: `texto`/`fundo`, `texto`/`superficie`, `texto`/`superficie-2`, `texto`/`primaria-suave`, `suave`/`fundo`, `suave`/`superficie`, `suave`/`superficie-2`, `suave`/`primaria-suave`, `primaria-forte`/`superficie`, `primaria-forte`/`primaria-suave`, `primaria-botao-texto`/`primaria-botao`, `coral-texto`/`coral`, `coral-forte`/`coral-suave`, `coral-forte`/`superficie`, `erro`/`superficie`, `erro`/`fundo`, `erro-texto`/`erro`, `erro-forte`/`erro-suave`, `erro-forte`/`superficie`, `neutro-forte`/`neutro-suave`, `neutro-forte`/`superficie`, `evento-aprovada-texto`/`evento-aprovada`, `texto`/`evento-expirada`.
+  - 3,0: `borda-campo`/`superficie`, `borda-campo`/`superficie-2`, `primaria`/`superficie`, `primaria`/`fundo`, `neutro-forte`/`superficie` (borda tracejada da expirada).
+  - Se algum par falhar durante a implementação, o token é ajustado mantendo o tom até passar.
 
 **Testes existentes:** os 157 unitários e 50 de integração devem continuar passando; asserções de texto/cor do visual antigo são atualizadas e listadas no relatório.
 
-**Verificação manual (controller, Playwright):** todas as telas em claro e escuro, em 390 px e 1280 px; sem rolagem horizontal; sem flash ao abrir no escuro; capturas de tela apresentadas ao usuário antes do push.
+**Verificação manual (controller, Playwright):** login, calendário (semana e lista), minhas reservas, aprovações, salas, usuários, relatórios, modal de nova reserva e modal de detalhes — em claro e escuro, em 390 px e 1280 px. Checklist: sem rolagem horizontal; sem flash ao recarregar no escuro; inputs de data/hora/mês e selects escuros no tema escuro; contador visível para admin e ausente (e sem chamada a `/reservas/pendentes` na aba de rede) para professor; menu móvel fecha no backdrop/item/Esc. Capturas de tela apresentadas ao usuário antes do push.
 
 **Publicação:** somente após aprovação do usuário; conferência no site publicado.
 
@@ -150,4 +191,6 @@ O `Modal` existente mantém a lógica e recebe o visual novo (título em `Titulo
 
 - E-mails e relatório PDF.
 - Mudanças de comportamento, textos de regras de negócio ou API.
+- Voltar ao tema automático depois de escolher um (botão "automático").
 - Animações elaboradas (somente transições curtas de cor/hover).
+- Política de segurança de conteúdo (CSP).
