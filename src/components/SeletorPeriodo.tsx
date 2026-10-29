@@ -1,3 +1,6 @@
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { Botao } from '../ui/Botao';
+
 export interface Periodo { inicio: Date; fim: Date }
 
 export function mesCorrente(ref = new Date()): Periodo {
@@ -15,9 +18,13 @@ export default function SeletorPeriodo({ valor, aoMudar }: Props) {
   const titulo = valor.inicio.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
   return (
     <div className="flex items-center gap-2">
-      <button type="button" onClick={() => deslocar(-1)} className="rounded border px-3 py-1">Mês anterior</button>
-      <span className="min-w-32 text-center capitalize">{titulo}</span>
-      <button type="button" onClick={() => deslocar(1)} className="rounded border px-3 py-1">Próximo mês</button>
+      <Botao variante="secundario" onClick={() => deslocar(-1)} icone={<ChevronLeft className="h-4 w-4" aria-hidden="true" />}>
+        Mês anterior
+      </Botao>
+      <span className="min-w-32 text-center font-bold capitalize text-texto">{titulo}</span>
+      <Botao variante="secundario" onClick={() => deslocar(1)} icone={<ChevronRight className="h-4 w-4" aria-hidden="true" />}>
+        Próximo mês
+      </Botao>
     </div>
   );
 }

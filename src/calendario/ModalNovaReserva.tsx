@@ -5,6 +5,9 @@ import type { Sala } from '../../shared/tipos';
 import Modal from '../components/Modal';
 import { useCriarReserva } from '../consultas/reservas';
 import { ErroApi } from '../lib/api';
+import { Botao } from '../ui/Botao';
+import { Campo } from '../ui/Campo';
+import { Selecao } from '../ui/Selecao';
 
 interface Props {
   aberto: boolean;
@@ -70,44 +73,34 @@ function Conteudo({ inicial, salas, aoFechar }: Omit<Props, 'aberto'>) {
     }
   }
 
-  const campo = 'mt-1 w-full rounded border px-3 py-2';
-  const msg = (k: string) => erros[k] && <span role="alert" className="block text-sm text-red-600">{erros[k]}</span>;
-
   return (
     <Modal titulo="Nova reserva" aoFechar={aoFechar}>
       <form onSubmit={enviar} noValidate className="space-y-3">
         {!salaFixa && (
-          <label className="block text-sm">Sala
-            <select value={salaId} onChange={(e) => setSalaId(e.target.value)} className={campo}>
-              <option value="">Selecione...</option>
-              {salas.map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}
-            </select>
-            {msg('salaId')}
-          </label>
+          <Selecao rotulo="Sala" value={salaId} onChange={(e) => setSalaId(e.target.value)} erro={erros.salaId}>
+            <option value="">Selecione...</option>
+            {salas.map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}
+          </Selecao>
         )}
-        <label className="block text-sm">Data
-          <input type="date" value={data} onChange={(e) => setData(e.target.value)} className={campo} />
-        </label>
+        <Campo rotulo="Data" type="date" value={data} onChange={(e) => setData(e.target.value)} />
         <div className="flex gap-3">
-          <label className="block flex-1 text-sm">Início
-            <input type="time" value={horaIni} min={HORA_ABERTURA} max={HORA_FECHAMENTO}
-              step={DURACAO_MINIMA_MIN * 60} onChange={(e) => setHoraIni(e.target.value)} className={campo} />
-          </label>
-          <label className="block flex-1 text-sm">Fim
-            <input type="time" value={horaFim} min={HORA_ABERTURA} max={HORA_FECHAMENTO}
-              step={DURACAO_MINIMA_MIN * 60} onChange={(e) => setHoraFim(e.target.value)} className={campo} />
-          </label>
+          <div className="flex-1">
+            <Campo rotulo="Início" type="time" value={horaIni} min={HORA_ABERTURA} max={HORA_FECHAMENTO}
+              step={DURACAO_MINIMA_MIN * 60} onChange={(e) => setHoraIni(e.target.value)} className="font-numero" />
+          </div>
+          <div className="flex-1">
+            <Campo rotulo="Fim" type="time" value={horaFim} min={HORA_ABERTURA} max={HORA_FECHAMENTO}
+              step={DURACAO_MINIMA_MIN * 60} onChange={(e) => setHoraFim(e.target.value)} className="font-numero" />
+          </div>
         </div>
-        {msg('inicio')}{msg('fim')}
-        <label className="block text-sm">Finalidade
-          <input value={finalidade} maxLength={FINALIDADE_MAX} onChange={(e) => setFinalidade(e.target.value)} className={campo} />
-          {msg('finalidade')}
-        </label>
-        {erroApi && <p role="alert" className="text-sm text-red-600">{erroApi}</p>}
-        <button type="submit" disabled={criar.isPending}
-          className="w-full rounded bg-blue-600 px-3 py-2 text-white disabled:opacity-60">
-          {criar.isPending ? 'Enviando...' : 'Confirmar'}
-        </button>
+        {erros.inicio && <p role="alert" className="text-sm text-erro">{erros.inicio}</p>}
+        {erros.fim && <p role="alert" className="text-sm text-erro">{erros.fim}</p>}
+        <Campo rotulo="Finalidade" value={finalidade} maxLength={FINALIDADE_MAX}
+          onChange={(e) => setFinalidade(e.target.value)} erro={erros.finalidade} />
+        {erroApi && <p role="alert" className="text-sm text-erro">{erroApi}</p>}
+        <Botao type="submit" carregando={criar.isPending} textoCarregando="Enviando..." className="w-full">
+          Confirmar
+        </Botao>
       </form>
     </Modal>
   );

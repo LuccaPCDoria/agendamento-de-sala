@@ -4,6 +4,10 @@ import type { Perfil, ReservaDTO } from '../../shared/tipos';
 import Modal from '../components/Modal';
 import { useAprovar, useCancelar, useHistorico, useRecusar } from '../consultas/reservas';
 import { formatarDataHora, ROTULO_STATUS } from '../rotulos';
+import { Botao } from '../ui/Botao';
+import { classesCampo } from '../ui/Campo';
+import { Hora } from '../ui/Hora';
+import { SeloStatus } from '../ui/SeloStatus';
 
 interface Props { reserva: ReservaDTO; perfil: Perfil; aoFechar: () => void }
 
@@ -33,7 +37,6 @@ export default function ModalDetalhes({ reserva, perfil, aoFechar }: Props) {
   const erro = aprovar.error?.message ?? recusar.error?.message ?? cancelar.error?.message ?? null;
   const verHistorico = admin || reserva.usuarioId === perfil.id;
   const historico = useHistorico(reserva.id, verHistorico);
-  const status = reserva.expirada ? ROTULO_STATUS.expirada : ROTULO_STATUS[reserva.status];
 
   async function executar(p: Promise<unknown>) {
     try { await p; aoFechar(); } catch { /* erro exibido no modal */ }
@@ -53,24 +56,25 @@ export default function ModalDetalhes({ reserva, perfil, aoFechar }: Props) {
 
   return (
     <Modal titulo="Detalhes da reserva" aoFechar={aoFechar}>
-      <dl className="space-y-1 text-sm">
-        <div><dt className="inline font-medium">Sala: </dt><dd className="inline">{reserva.salaNome}</dd></div>
-        <div><dt className="inline font-medium">Horário: </dt>
-          <dd className="inline">{formatarPeriodo(reserva.inicio, reserva.fim)}</dd></div>
-        <div><dt className="inline font-medium">Solicitante: </dt><dd className="inline">{reserva.solicitanteNome}</dd></div>
-        <div><dt className="inline font-medium">Finalidade: </dt><dd className="inline">{reserva.finalidade}</dd></div>
-        <div><dt className="inline font-medium">Status: </dt><dd className="inline">{status}</dd></div>
+      <dl className="space-y-1 text-sm text-texto">
+        <div><dt className="inline font-bold">Sala: </dt><dd className="inline">{reserva.salaNome}</dd></div>
+        <div><dt className="inline font-bold">Horário: </dt>
+          <dd className="inline"><Hora>{formatarPeriodo(reserva.inicio, reserva.fim)}</Hora></dd></div>
+        <div><dt className="inline font-bold">Solicitante: </dt><dd className="inline">{reserva.solicitanteNome}</dd></div>
+        <div><dt className="inline font-bold">Finalidade: </dt><dd className="inline break-words">{reserva.finalidade}</dd></div>
+        <div><dt className="inline font-bold">Status: </dt>
+          <dd className="inline"><SeloStatus status={reserva.status} expirada={reserva.expirada} /></dd></div>
         {reserva.motivoRecusa && (
-          <div><dt className="inline font-medium">Motivo da recusa: </dt><dd className="inline">{reserva.motivoRecusa}</dd></div>
+          <div className="text-erro-forte"><dt className="inline font-bold">Motivo da recusa: </dt><dd className="inline break-words">{reserva.motivoRecusa}</dd></div>
         )}
       </dl>
 
       {verHistorico && historico.data && historico.data.length > 0 && (
         <section className="mt-3">
-          <h3 className="text-sm font-medium">Histórico</h3>
-          <ul className="mt-1 space-y-1 text-xs text-slate-600">
+          <h3 className="text-sm font-bold text-texto">Histórico</h3>
+          <ul className="mt-1 space-y-1 text-xs text-suave">
             {historico.data.map((e, i) => (
-              <li key={i}>
+              <li key={i} className="font-numero">
                 {formatarDataHora(e.alteradoEm)} — {e.statusAnterior ? ROTULO_STATUS[e.statusAnterior] : 'Criada'} →{' '}
                 {ROTULO_STATUS[e.statusNovo]} — por {e.alteradoPorNome}
               </li>
@@ -81,34 +85,28 @@ export default function ModalDetalhes({ reserva, perfil, aoFechar }: Props) {
 
       {recusando && (
         <div className="mt-3 space-y-2">
-          <label className="block text-sm">Motivo da recusa
+          <label className="block text-sm font-medium text-texto">Motivo da recusa
             <textarea value={motivo} onChange={(e) => setMotivo(e.target.value)}
-              className="mt-1 w-full rounded border px-3 py-2" />
+              className={`mt-1 ${classesCampo}`} />
           </label>
-          {erroMotivo && <p role="alert" className="text-sm text-red-600">{erroMotivo}</p>}
-          <button type="button" disabled={ocupado} onClick={confirmarRecusa}
-            className="rounded bg-red-600 px-3 py-2 text-sm text-white disabled:opacity-50">Confirmar recusa</button>
+          {erroMotivo && <p role="alert" className="text-sm text-erro-forte">{erroMotivo}</p>}
+          <Botao variante="perigo" disabled={ocupado} onClick={confirmarRecusa}>Confirmar recusa</Botao>
         </div>
       )}
 
-      {erro && <p role="alert" className="mt-3 text-sm text-red-600">{erro}</p>}
+      {erro && <p role="alert" className="mt-3 text-sm text-erro-forte">{erro}</p>}
 
       <div className="mt-4 flex flex-wrap justify-end gap-2">
         {podeDecidir && (
           <>
-            <button type="button" disabled={ocupado}
-              onClick={() => void executar(aprovar.mutateAsync(reserva.id))}
-              className="rounded bg-green-600 px-3 py-2 text-sm text-white disabled:opacity-50">Aprovar</button>
+            <Botao disabled={ocupado} onClick={() => void executar(aprovar.mutateAsync(reserva.id))}>Aprovar</Botao>
             {!recusando && (
-              <button type="button" disabled={ocupado} onClick={() => setRecusando(true)}
-                className="rounded border border-red-600 px-3 py-2 text-sm text-red-600 disabled:opacity-50">Recusar</button>
+              <Botao variante="secundario" disabled={ocupado} onClick={() => setRecusando(true)}>Recusar</Botao>
             )}
           </>
         )}
         {podeCancelar && (
-          <button type="button" disabled={ocupado}
-            onClick={confirmarCancelamento}
-            className="rounded border px-3 py-2 text-sm disabled:opacity-50">Cancelar reserva</button>
+          <Botao variante="secundario" disabled={ocupado} onClick={confirmarCancelamento}>Cancelar reserva</Botao>
         )}
       </div>
     </Modal>
