@@ -14,6 +14,13 @@ describe('Botao', () => {
     expect(b.className).toMatch(/focus-visible:ring-primaria/);
     expect(b).toHaveProperty('type', 'button');
   });
+  it('perigoContorno tem contorno vermelho e sem fundo sólido', () => {
+    const b = render(<Botao variante="perigoContorno">Inativar</Botao>).getByRole('button');
+    expect(b.className).toMatch(/border-erro/);
+    expect(b.className).toMatch(/text-erro/);
+    expect(b.className).not.toMatch(/bg-erro /);
+    expect(b.className).toMatch(/focus-visible:ring-primaria/);
+  });
   it('carregando fica desabilitado e mostra textoCarregando', () => {
     render(<Botao carregando textoCarregando="Salvando...">Salvar</Botao>);
     const b = screen.getByRole('button', { name: 'Salvando...' });

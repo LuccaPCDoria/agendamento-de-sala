@@ -24,14 +24,14 @@ const montar = () => render(
 );
 
 describe('Salas visual', () => {
-  it('aplica selos, chips e botão perigo', async () => {
+  it('aplica selos, chips e botão Inativar com contorno', async () => {
     apiMock.mockResolvedValue(salas);
     montar();
     expect(await screen.findByText('Ativa')).toHaveClass('bg-primaria-suave');
     expect(screen.getByText('Inativa')).toHaveClass('bg-neutro-suave');
     expect(screen.getByText('Projetor')).toHaveClass('bg-superficie-2');
     expect(screen.getByText('Ar')).toHaveClass('bg-superficie-2');
-    expect(screen.getByRole('button', { name: 'Inativar' })).toHaveClass('bg-erro', 'text-erro-texto');
+    expect(screen.getByRole('button', { name: 'Inativar' })).toHaveClass('border-erro', 'text-erro');
   });
 
   it('mostra estado vazio', async () => {

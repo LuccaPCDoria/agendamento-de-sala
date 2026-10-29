@@ -1,6 +1,6 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
 
-type Variante = 'principal' | 'secundario' | 'perigo' | 'discreto';
+type Variante = 'principal' | 'secundario' | 'perigo' | 'perigoContorno' | 'discreto';
 
 const BASE =
   'inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 font-texto text-sm font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primaria focus-visible:ring-offset-2 focus-visible:ring-offset-superficie';
@@ -9,6 +9,7 @@ const VARIANTES: Record<Variante, string> = {
   principal: 'bg-primaria-botao text-primaria-botao-texto hover:opacity-90',
   secundario: 'border border-borda-campo bg-transparent text-primaria-forte hover:bg-superficie-2',
   perigo: 'bg-erro text-erro-texto hover:opacity-90',
+  perigoContorno: 'border border-erro bg-transparent text-erro hover:bg-erro-suave hover:text-erro-forte',
   discreto: 'bg-transparent text-suave hover:bg-superficie-2',
 };
 

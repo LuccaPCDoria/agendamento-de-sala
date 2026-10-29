@@ -66,7 +66,7 @@ export default function Salas() {
                   <td className="p-2">
                     <div className="flex gap-2">
                     <Botao variante="secundario" onClick={() => setEditando(s)}>Editar</Botao>
-                    <Botao variante={s.ativa ? "perigo" : "secundario"} disabled={inativar.isPending || reativar.isPending}
+                    <Botao variante={s.ativa ? "perigoContorno" : "secundario"} disabled={inativar.isPending || reativar.isPending}
                       onClick={() => alternar(s)}>
                       {s.ativa ? "Inativar" : "Reativar"}
                     </Botao>

@@ -62,7 +62,7 @@ export default function Usuarios() {
                   <td className="p-2">
                     <div className="flex gap-2">
                     <Botao variante="secundario" onClick={() => setEditando(u)}>Editar</Botao>
-                    <Botao variante={u.ativo ? "perigo" : "secundario"} disabled={inativar.isPending || reativar.isPending}
+                    <Botao variante={u.ativo ? "perigoContorno" : "secundario"} disabled={inativar.isPending || reativar.isPending}
                       onClick={() => alternar(u)}>
                       {u.ativo ? "Inativar" : "Reativar"}
                     </Botao>
