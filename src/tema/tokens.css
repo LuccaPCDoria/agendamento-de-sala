@@ -1,0 +1,58 @@
+:root {
+  color-scheme: light;
+  accent-color: rgb(var(--cor-primaria-botao));
+  --cor-fundo: 243 250 248;
+  --cor-superficie: 255 255 255;
+  --cor-superficie-2: 230 244 241;
+  --cor-borda: 215 236 232;
+  --cor-borda-campo: 114 139 134;
+  --cor-texto: 16 48 44;
+  --cor-suave: 79 104 100;
+  --cor-primaria: 15 159 143;
+  --cor-primaria-forte: 8 105 95;
+  --cor-primaria-suave: 223 244 240;
+  --cor-primaria-botao: 11 122 110;
+  --cor-primaria-botao-texto: 255 255 255;
+  --cor-coral: 255 122 89;
+  --cor-coral-texto: 16 48 44;
+  --cor-coral-suave: 255 230 222;
+  --cor-coral-forte: 180 71 43;
+  --cor-erro: 197 48 48;
+  --cor-erro-texto: 255 255 255;
+  --cor-erro-suave: 253 227 227;
+  --cor-erro-forte: 180 46 46;
+  --cor-neutro-suave: 233 238 237;
+  --cor-neutro-forte: 74 96 92;
+  --cor-evento-aprovada: 11 122 110;
+  --cor-evento-aprovada-texto: 255 255 255;
+  --cor-evento-expirada: 196 211 208;
+}
+
+.dark {
+  color-scheme: dark;
+  --cor-fundo: 11 20 19;
+  --cor-superficie: 19 34 32;
+  --cor-superficie-2: 26 45 42;
+  --cor-borda: 34 64 59;
+  --cor-borda-campo: 102 131 128;
+  --cor-texto: 227 241 238;
+  --cor-suave: 143 169 164;
+  --cor-primaria: 43 196 178;
+  --cor-primaria-forte: 95 216 201;
+  --cor-primaria-suave: 18 58 53;
+  --cor-primaria-botao: 43 196 178;
+  --cor-primaria-botao-texto: 6 36 32;
+  --cor-coral: 255 142 112;
+  --cor-coral-texto: 6 36 32;
+  --cor-coral-suave: 58 33 26;
+  --cor-coral-forte: 255 158 133;
+  --cor-erro: 255 107 107;
+  --cor-erro-texto: 42 14 14;
+  --cor-erro-suave: 58 27 27;
+  --cor-erro-forte: 255 138 138;
+  --cor-neutro-suave: 30 42 40;
+  --cor-neutro-forte: 163 186 181;
+  --cor-evento-aprovada: 43 196 178;
+  --cor-evento-aprovada-texto: 6 36 32;
+  --cor-evento-expirada: 46 64 60;
+}

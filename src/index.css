@@ -2,6 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  body { @apply bg-fundo text-texto font-texto antialiased; }
+}
+
 @media (max-width: 640px) {
   .fc .fc-toolbar { flex-wrap: wrap; gap: 0.5rem; justify-content: center; }
   .fc .fc-toolbar-title { font-size: 1rem; text-align: center; }

@@ -1,6 +1,47 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
-  theme: { extend: {} },
+  darkMode: 'class',
+  theme: {
+    extend: {
+      colors: {
+        'fundo': 'rgb(var(--cor-fundo) / <alpha-value>)',
+        'superficie': 'rgb(var(--cor-superficie) / <alpha-value>)',
+        'superficie-2': 'rgb(var(--cor-superficie-2) / <alpha-value>)',
+        'borda': 'rgb(var(--cor-borda) / <alpha-value>)',
+        'borda-campo': 'rgb(var(--cor-borda-campo) / <alpha-value>)',
+        'texto': 'rgb(var(--cor-texto) / <alpha-value>)',
+        'suave': 'rgb(var(--cor-suave) / <alpha-value>)',
+        'primaria': 'rgb(var(--cor-primaria) / <alpha-value>)',
+        'primaria-forte': 'rgb(var(--cor-primaria-forte) / <alpha-value>)',
+        'primaria-suave': 'rgb(var(--cor-primaria-suave) / <alpha-value>)',
+        'primaria-botao': 'rgb(var(--cor-primaria-botao) / <alpha-value>)',
+        'primaria-botao-texto': 'rgb(var(--cor-primaria-botao-texto) / <alpha-value>)',
+        'coral': 'rgb(var(--cor-coral) / <alpha-value>)',
+        'coral-texto': 'rgb(var(--cor-coral-texto) / <alpha-value>)',
+        'coral-suave': 'rgb(var(--cor-coral-suave) / <alpha-value>)',
+        'coral-forte': 'rgb(var(--cor-coral-forte) / <alpha-value>)',
+        'erro': 'rgb(var(--cor-erro) / <alpha-value>)',
+        'erro-texto': 'rgb(var(--cor-erro-texto) / <alpha-value>)',
+        'erro-suave': 'rgb(var(--cor-erro-suave) / <alpha-value>)',
+        'erro-forte': 'rgb(var(--cor-erro-forte) / <alpha-value>)',
+        'neutro-suave': 'rgb(var(--cor-neutro-suave) / <alpha-value>)',
+        'neutro-forte': 'rgb(var(--cor-neutro-forte) / <alpha-value>)',
+        'evento-aprovada': 'rgb(var(--cor-evento-aprovada) / <alpha-value>)',
+        'evento-aprovada-texto': 'rgb(var(--cor-evento-aprovada-texto) / <alpha-value>)',
+        'evento-expirada': 'rgb(var(--cor-evento-expirada) / <alpha-value>)',
+      },
+      borderColor: { DEFAULT: 'rgb(var(--cor-borda) / <alpha-value>)' },
+      boxShadow: {
+        cartao: '0 4px 14px rgba(15,159,143,.08)',
+        modal: '0 20px 50px rgba(16,48,44,.18)',
+      },
+      fontFamily: {
+        titulo: ['Unbounded', 'system-ui', 'sans-serif'],
+        texto: ['Manrope', 'system-ui', 'sans-serif'],
+        numero: ['"Space Mono"', 'ui-monospace', 'monospace'],
+      },
+    },
+  },
   plugins: [],
 };
