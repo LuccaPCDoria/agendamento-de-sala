@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { cleanup, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom/vitest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import Salas from './Salas';
@@ -38,5 +39,50 @@ describe('Salas visual', () => {
     apiMock.mockResolvedValue([]);
     montar();
     expect(await screen.findByText('Nenhuma sala cadastrada')).toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: 'Buscar' })).toBeNull();
+  });
+});
+
+describe('Salas filtros', () => {
+  it('busca reduz a lista, mostra o contador e limpar restaura', async () => {
+    apiMock.mockResolvedValue(salas);
+    const user = userEvent.setup();
+    montar();
+    await screen.findByText('Sala 1');
+    expect(screen.getByText('2 de 2')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Limpar filtros' })).toBeNull();
+
+    await user.type(screen.getByRole('textbox', { name: 'Buscar' }), 'projetor');
+    expect(screen.queryByText('Sala 2')).toBeNull();
+    expect(screen.getByText('Sala 1')).toBeInTheDocument();
+    expect(screen.getByText('1 de 2')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Limpar filtros' }));
+    expect(screen.getByText('Sala 2')).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Buscar' })).toHaveValue('');
+  });
+
+  it('filtra por situação e capacidade mínima', async () => {
+    apiMock.mockResolvedValue(salas);
+    const user = userEvent.setup();
+    montar();
+    await screen.findByText('Sala 1');
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Situação' }), 'inativo');
+    expect(screen.queryByText('Sala 1')).toBeNull();
+    expect(screen.getByText('Sala 2')).toBeInTheDocument();
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Situação' }), '');
+    await user.type(screen.getByRole('spinbutton', { name: 'Capacidade mínima' }), '20');
+    expect(screen.getByText('Sala 1')).toBeInTheDocument();
+    expect(screen.queryByText('Sala 2')).toBeNull();
+  });
+
+  it('sem resultado mostra mensagem própria com opção de limpar', async () => {
+    apiMock.mockResolvedValue(salas);
+    const user = userEvent.setup();
+    montar();
+    await screen.findByText('Sala 1');
+    await user.type(screen.getByRole('textbox', { name: 'Buscar' }), 'inexistente');
+    expect(screen.getByText('Nenhum resultado para os filtros')).toBeInTheDocument();
+    expect(screen.queryByText('Nenhuma sala cadastrada')).toBeNull();
   });
 });

@@ -1,6 +1,11 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { TIPOS_SALA, type TipoSala } from '../../shared/constantes';
 import type { Sala } from '../../shared/tipos';
+import BarraFiltros, { SemResultado } from '../components/BarraFiltros';
 import FormSala from '../components/FormSala';
+import { FILTRO_SALAS_VAZIO, filtrarSalas, filtroAtivo, type Situacao } from '../filtros/filtrar';
+import { Campo } from '../ui/Campo';
+import { Selecao } from '../ui/Selecao';
 import Modal from '../components/Modal';
 import { useCriarSala, useEditarSala, useInativarSala, useReativarSala, useSalas } from '../consultas/salas';
 import { Plus, DoorOpen } from "lucide-react";
@@ -20,6 +25,9 @@ export default function Salas() {
   const inativar = useInativarSala();
   const reativar = useReativarSala();
   const erroAcao = inativar.error?.message ?? reativar.error?.message ?? null;
+  const [filtro, setFiltro] = useState(FILTRO_SALAS_VAZIO);
+  const visiveis = useMemo(() => filtrarSalas(data ?? [], filtro), [data, filtro]);
+  const limpar = () => setFiltro(FILTRO_SALAS_VAZIO);
 
   function alternar(s: Sala) {
     inativar.reset();
@@ -45,6 +53,24 @@ export default function Salas() {
       {erroAcao && <p role="alert" className="text-erro">{erroAcao}</p>}
       {data && data.length === 0 && <Cartao><EstadoVazio icone={DoorOpen} mensagem="Nenhuma sala cadastrada" /></Cartao>}
       {data && data.length > 0 && (
+        <BarraFiltros total={data.length} visiveis={visiveis.length} ativo={filtroAtivo(filtro)} aoLimpar={limpar}>
+          <Campo rotulo="Buscar" placeholder="Nome ou recurso" value={filtro.busca}
+            onChange={(e) => setFiltro({ ...filtro, busca: e.target.value })} />
+          <Selecao rotulo="Tipo" value={filtro.tipo} onChange={(e) => setFiltro({ ...filtro, tipo: e.target.value as TipoSala | '' })}>
+            <option value="">Todos</option>
+            {TIPOS_SALA.map((t) => <option key={t} value={t}>{ROTULO_TIPO[t]}</option>)}
+          </Selecao>
+          <Selecao rotulo="Situação" value={filtro.situacao} onChange={(e) => setFiltro({ ...filtro, situacao: e.target.value as Situacao })}>
+            <option value="">Todas</option>
+            <option value="ativo">Ativas</option>
+            <option value="inativo">Inativas</option>
+          </Selecao>
+          <Campo rotulo="Capacidade mínima" type="number" min={1} className="w-36" value={filtro.capacidadeMin}
+            onChange={(e) => setFiltro({ ...filtro, capacidadeMin: e.target.value })} />
+        </BarraFiltros>
+      )}
+      {data && data.length > 0 && visiveis.length === 0 && <Cartao><SemResultado aoLimpar={limpar} /></Cartao>}
+      {visiveis.length > 0 && (
         <Cartao className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead><tr className="border-b">
@@ -52,7 +78,7 @@ export default function Salas() {
               <th className="hidden p-2 font-bold text-suave sm:table-cell">Recursos</th><th className="p-2 font-bold text-suave">Situação</th><th className="p-2" />
             </tr></thead>
             <tbody>
-              {data.map((s) => (
+              {visiveis.map((s) => (
                 <tr key={s.id} className="border-b last:border-b-0 hover:bg-superficie-2">
                   <td className="p-2">{s.nome}</td>
                   <td className="p-2">{ROTULO_TIPO[s.tipo]}</td>

@@ -1,7 +1,12 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { PAPEIS, type Papel } from '../../shared/constantes';
 import type { DadosCriarUsuario } from '../../shared/esquemas';
 import type { Perfil } from '../../shared/tipos';
+import BarraFiltros, { SemResultado } from '../components/BarraFiltros';
 import FormUsuario from '../components/FormUsuario';
+import { FILTRO_USUARIOS_VAZIO, filtrarUsuarios, filtroAtivo, type Situacao } from '../filtros/filtrar';
+import { Campo } from '../ui/Campo';
+import { Selecao } from '../ui/Selecao';
 import Modal from '../components/Modal';
 import { useCriarUsuario, useEditarUsuario, useInativarUsuario, useReativarUsuario, useUsuarios } from '../consultas/usuarios';
 import { Plus, Users } from "lucide-react";
@@ -21,6 +26,9 @@ export default function Usuarios() {
   const inativar = useInativarUsuario();
   const reativar = useReativarUsuario();
   const erroAcao = inativar.error?.message ?? reativar.error?.message ?? null;
+  const [filtro, setFiltro] = useState(FILTRO_USUARIOS_VAZIO);
+  const visiveis = useMemo(() => filtrarUsuarios(data ?? [], filtro), [data, filtro]);
+  const limpar = () => setFiltro(FILTRO_USUARIOS_VAZIO);
 
   function alternar(u: Perfil) {
     inativar.reset();
@@ -46,6 +54,22 @@ export default function Usuarios() {
       {erroAcao && <p role="alert" className="text-erro">{erroAcao}</p>}
       {data && data.length === 0 && <Cartao><EstadoVazio icone={Users} mensagem="Nenhum usuário cadastrado" /></Cartao>}
       {data && data.length > 0 && (
+        <BarraFiltros total={data.length} visiveis={visiveis.length} ativo={filtroAtivo(filtro)} aoLimpar={limpar}>
+          <Campo rotulo="Buscar" placeholder="Nome ou e-mail" value={filtro.busca}
+            onChange={(e) => setFiltro({ ...filtro, busca: e.target.value })} />
+          <Selecao rotulo="Perfil" value={filtro.papel} onChange={(e) => setFiltro({ ...filtro, papel: e.target.value as Papel | '' })}>
+            <option value="">Todos</option>
+            {PAPEIS.map((p) => <option key={p} value={p}>{ROTULO_PAPEL[p]}</option>)}
+          </Selecao>
+          <Selecao rotulo="Situação" value={filtro.situacao} onChange={(e) => setFiltro({ ...filtro, situacao: e.target.value as Situacao })}>
+            <option value="">Todos</option>
+            <option value="ativo">Ativos</option>
+            <option value="inativo">Inativos</option>
+          </Selecao>
+        </BarraFiltros>
+      )}
+      {data && data.length > 0 && visiveis.length === 0 && <Cartao><SemResultado aoLimpar={limpar} /></Cartao>}
+      {visiveis.length > 0 && (
         <Cartao className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead><tr className="border-b">
@@ -53,7 +77,7 @@ export default function Usuarios() {
               <th className="p-2 font-bold text-suave">Situação</th><th className="p-2" />
             </tr></thead>
             <tbody>
-              {data.map((u) => (
+              {visiveis.map((u) => (
                 <tr key={u.id} className="border-b last:border-b-0 hover:bg-superficie-2">
                   <td className="p-2">{u.nome}</td>
                   <td className="hidden p-2 sm:table-cell">{u.email}</td>
