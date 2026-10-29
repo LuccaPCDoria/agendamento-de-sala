@@ -11,6 +11,9 @@ import '@fontsource/manrope/700.css';
 import '@fontsource/space-mono/400.css';
 import '@fontsource/space-mono/700.css';
 import './index.css';
+import { iniciarTema } from './tema/tema';
+
+iniciarTema();
 
 const queryClient = new QueryClient();
 
